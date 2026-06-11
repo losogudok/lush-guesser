@@ -1,0 +1,13 @@
+:80 {
+    # Set the root directory for static files
+    root * /srv
+
+    # Enable static file server
+    file_server
+
+    # Reverse proxy /api requests to the NestJS backend
+    reverse_proxy /api/* backend:3001
+
+    # Fallback to index.html for Single Page App routing
+    try_files {path} /index.html
+}

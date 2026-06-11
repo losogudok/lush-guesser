@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lush-guesser-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_PATH=/app/data/database.sqlite
+      - NODE_ENV=production
+    volumes:
+      - ./data:/app/data
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lush-guesser-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  data:

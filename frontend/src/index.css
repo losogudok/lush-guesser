@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cabinet+Grotesk:wght@800;900&family=Georgia:ital,wght@0,400;0,700;1,400&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Cabinet Grotesk', 'Space Grotesk', sans-serif;
+  --font-serif: 'Georgia', serif;
+
+  --color-lush-black: #000000;
+  --color-lush-white: #ffffff;
+  --color-lush-green: #00E676;     /* Play Again Neon Green */
+  --color-lush-yellow: #EEFF00;    /* Current Worth Yellow Pill */
+  --color-lush-cyan: #4CE3E6;      /* Reveal Next Cyan Button */
+  --color-lush-gray-bg: #F8F9FA;   /* Off-white light background */
+  --color-lush-gray-border: #E0E0E0; /* Soft border color */
+}
+
+/* Global Reset & Body Styles */
+body {
+  background-color: var(--color-lush-white);
+  color: var(--color-lush-black);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Stark Bold Headers in Cabinet Grotesk */
+.font-cabinet {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+/* Georgia-style serif narrative font */
+.font-georgia {
+  font-family: var(--font-serif);
+}
+
+/* --- Card Flip Animations --- */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* --- Shake Animation for Incorrect Guesses --- */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Custom Scrollbar to match Lush minimal design */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-lush-white);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-lush-black);
+  border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #333333;
+}
