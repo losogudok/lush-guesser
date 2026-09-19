@@ -4,6 +4,9 @@ import WelcomeScreen from './components/WelcomeScreen';
 import GameScreen from './components/GameScreen';
 import GameOverScreen from './components/GameOverScreen';
 import LeaderboardScreen from './components/LeaderboardScreen';
+import InfoModal from './components/InfoModal';
+import type { InfoModalType } from './components/InfoModal';
+import { GAME_ROUND_COUNT } from './constants';
 
 type ScreenState = 'welcome' | 'game' | 'gameover' | 'leaderboard';
 
@@ -12,6 +15,7 @@ function App() {
   const [finalScore, setFinalScore] = useState<number>(0);
   const [correctAnswers, setCorrectAnswers] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'play' | 'leaderboard'>('play');
+  const [infoModal, setInfoModal] = useState<InfoModalType | null>(null);
 
   const handleStartGame = () => {
     setScreen('game');
@@ -58,6 +62,7 @@ function App() {
           onStartGame={handleStartGame}
           onNavigate={handleHeaderNavigate}
           activeTab={activeTab}
+          onOpenInfo={setInfoModal}
         />
       )}
 
@@ -72,10 +77,11 @@ function App() {
         <GameOverScreen
           score={finalScore}
           correctAnswers={correctAnswers}
-          totalRounds={5}
+          totalRounds={GAME_ROUND_COUNT}
           onPlayAgain={handlePlayAgain}
           onReturnHome={handleReturnHome}
           onNavigateToLeaderboard={handleNavigateToLeaderboard}
+          onOpenInfo={setInfoModal}
         />
       )}
 
@@ -83,8 +89,10 @@ function App() {
         <LeaderboardScreen
           onNavigate={handleHeaderNavigate}
           activeTab={activeTab}
+          onOpenInfo={setInfoModal}
         />
       )}
+      <InfoModal type={infoModal} onClose={() => setInfoModal(null)} />
     </div>
   );
 }

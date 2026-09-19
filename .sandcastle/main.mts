@@ -1,4 +1,4 @@
-// Parallel Planner with Review — four-phase orchestration loop
+// Parallel Planner with Review — Sandcastle orchestration loop for Lush Guesser
 //
 // This template drives a multi-phase workflow:
 //   Phase 1 (Plan):             An opus agent analyzes open issues, builds a
@@ -34,25 +34,64 @@ const planSchema = z.object({
     z.object({ id: z.string(), title: z.string(), branch: z.string() }),
   ),
 });
+type PlannedIssue = z.infer<typeof planSchema>["issues"][number];
+
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+  console.log(`Usage: npm run sandcastle
+
+Runs Sandcastle against open GitHub Issues labeled "Sandcastle".
+
+Setup:
+  npm run sandcastle:build-image
+  cp .sandcastle/.env.example .sandcastle/.env
+
+Environment:
+  SANDCASTLE_MAX_ITERATIONS=1
+  SANDCASTLE_MODEL=opencode/big-pickle
+  SANDCASTLE_IMAGE_NAME=lush-guesser-sandcastle
+  SANDCASTLE_TARGET_BRANCH=main
+`);
+  process.exit(0);
+}
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-// Maximum number of plan→execute→merge cycles before stopping.
-// Raise this if your backlog is large; lower it for a quick smoke-test run.
-const MAX_ITERATIONS = 10;
+const MAX_ITERATIONS = Number.parseInt(
+  process.env.SANDCASTLE_MAX_ITERATIONS ?? "1",
+  10,
+);
+const IMAGE_NAME = process.env.SANDCASTLE_IMAGE_NAME ?? "lush-guesser-sandcastle";
+const MODEL = process.env.SANDCASTLE_MODEL ?? "opencode/big-pickle";
+const TARGET_BRANCH = process.env.SANDCASTLE_TARGET_BRANCH ?? "HEAD";
 
-// Hooks run inside the sandbox before the agent starts each iteration.
-// npm install ensures the sandbox always has fresh dependencies.
 const hooks = {
-  sandbox: { onSandboxReady: [{ command: "npm install" }] },
+  sandbox: {
+    onSandboxReady: [
+      { command: "npm ci" },
+      { command: "npm ci --prefix frontend" },
+      { command: "npm ci --prefix server" },
+    ],
+  },
 };
 
 // Copy node_modules from the host into the worktree before each sandbox
 // starts. Avoids a full npm install from scratch; the hook above handles
 // platform-specific binaries and any packages added since the last copy.
-const copyToWorktree = ["node_modules"];
+const copyToWorktree = [
+  "node_modules",
+  "frontend/node_modules",
+  "server/node_modules",
+];
+
+const sandboxProvider = () =>
+  docker({
+    imageName: IMAGE_NAME,
+    mounts: [{ hostPath: "~/.npm", sandboxPath: "/home/agent/.npm" }],
+  });
+
+const agent = () => sandcastle.opencode(MODEL);
 
 // ---------------------------------------------------------------------------
 // Main loop
@@ -72,13 +111,13 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
   const plan = await sandcastle.run({
     hooks,
-    sandbox: docker(),
+    sandbox: sandboxProvider(),
     name: "planner",
     // One iteration is enough: the planner just needs to read and reason,
     // not write code. (Structured output requires maxIterations: 1.)
     maxIterations: 1,
     // Opus for planning: dependency analysis benefits from deeper reasoning.
-    agent: sandcastle.opencode("opencode/big-pickle"),
+    agent: agent(),
     promptFile: "./.sandcastle/plan-prompt.md",
     // Extract and validate the <plan> JSON into a typed object. Throws
     // StructuredOutputError if the tag is missing, the JSON is malformed, or
@@ -112,10 +151,10 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
 
   const settled = await Promise.allSettled(
-    issues.map(async (issue) => {
+    issues.map(async (issue: PlannedIssue) => {
       const sandbox = await sandcastle.createSandbox({
         branch: issue.branch,
-        sandbox: docker(),
+        sandbox: sandboxProvider(),
         hooks,
         copyToWorktree,
       });
@@ -125,7 +164,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
         const implement = await sandbox.run({
           name: "implementer",
           maxIterations: 100,
-          agent: sandcastle.opencode("opencode/big-pickle"),
+          agent: agent(),
           promptFile: "./.sandcastle/implement-prompt.md",
           promptArgs: {
             TASK_ID: issue.id,
@@ -139,10 +178,11 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
           const review = await sandbox.run({
             name: "reviewer",
             maxIterations: 1,
-            agent: sandcastle.opencode("opencode/big-pickle"),
+            agent: agent(),
             promptFile: "./.sandcastle/review-prompt.md",
             promptArgs: {
               BRANCH: issue.branch,
+              TARGET_BRANCH,
             },
           });
 
@@ -207,10 +247,10 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
   await sandcastle.run({
     hooks,
-    sandbox: docker(),
+    sandbox: sandboxProvider(),
     name: "merger",
     maxIterations: 1,
-    agent: sandcastle.opencode("opencode/big-pickle"),
+    agent: agent(),
     promptFile: "./.sandcastle/merge-prompt.md",
     promptArgs: {
       // A markdown list of branch names, one per line.

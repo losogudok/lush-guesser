@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Star, RefreshCw, Home, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import FooterLinks from './FooterLinks';
+import type { InfoModalType } from './InfoModal';
 
 interface GameOverScreenProps {
   score: number;
@@ -9,6 +11,7 @@ interface GameOverScreenProps {
   onPlayAgain: () => void;
   onReturnHome: () => void;
   onNavigateToLeaderboard: () => void;
+  onOpenInfo: (type: InfoModalType) => void;
 }
 
 export const GameOverScreen: React.FC<GameOverScreenProps> = ({
@@ -18,6 +21,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
   onPlayAgain,
   onReturnHome,
   onNavigateToLeaderboard,
+  onOpenInfo,
 }) => {
   const { t } = useTranslation();
   const [name, setName] = useState('');
@@ -60,9 +64,13 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
       setTimeout(() => {
         onNavigateToLeaderboard();
       }, 1000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || 'Server connection failed. Could not save score.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Server connection failed. Could not save score.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -170,20 +178,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="flex flex-col sm:flex-row items-center justify-between px-8 py-6 border-t border-lush-gray-border text-xs text-gray-500 bg-white">
-        <div className="font-cabinet text-sm tracking-wide text-lush-black mb-4 sm:mb-0">
-          Lush Scent Guesser
-        </div>
-        <div className="flex space-x-6 mb-4 sm:mb-0">
-          <a href="#" className="hover:underline">Terms</a>
-          <a href="#" className="hover:underline">Privacy</a>
-          <a href="#" className="hover:underline">Support</a>
-        </div>
-        <div>
-          &copy; 2026 Lush Scent Guesser. Stay Fresh.
-        </div>
-      </footer>
+      <FooterLinks onOpenInfo={onOpenInfo} showBrand />
     </div>
   );
 };

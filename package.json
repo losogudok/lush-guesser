@@ -1,6 +1,16 @@
 {
+  "scripts": {
+    "test:e2e": "playwright test",
+    "sandcastle": "tsx .sandcastle/main.mts",
+    "sandcastle:build-image": "sandcastle docker build-image --image-name lush-guesser-sandcastle",
+    "sandcastle:remove-image": "sandcastle docker remove-image --image-name lush-guesser-sandcastle"
+  },
   "devDependencies": {
-    "@ai-hero/sandcastle": "^0.8.0"
+    "@ai-hero/sandcastle": "^0.8.0",
+    "@playwright/test": "^1.60.0",
+    "@standard-schema/spec": "^1.1.0",
+    "@types/node": "^25.9.3",
+    "tsx": "^4.22.4"
   },
   "dependencies": {
     "zod": "^4.4.3"

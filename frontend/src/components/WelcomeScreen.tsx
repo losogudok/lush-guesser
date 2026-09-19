@@ -1,17 +1,21 @@
 import React from 'react';
-import { ArrowRight, HelpCircle, User } from 'lucide-react';
+import { ArrowRight, HelpCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import FooterLinks from './FooterLinks';
+import type { InfoModalType } from './InfoModal';
 
 interface WelcomeScreenProps {
   onStartGame: () => void;
   onNavigate: (tab: 'play' | 'leaderboard') => void;
   activeTab: 'play' | 'leaderboard';
+  onOpenInfo: (type: InfoModalType) => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onStartGame,
   onNavigate,
   activeTab,
+  onOpenInfo,
 }) => {
   const { t, i18n } = useTranslation();
 
@@ -25,10 +29,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       {/* Navigation Header */}
       <header className="flex items-center justify-between px-8 py-6 border-b border-lush-gray-border">
         <div 
-          className="text-2xl font-cabinet tracking-tight cursor-pointer text-lush-black"
+          className="cursor-pointer rotate-y-180"
           onClick={() => onNavigate('play')}
         >
-          {t('app.title')}
+          <picture>
+            <source srcSet="/public/logo.webp" media="(prefers-color-scheme: dark)" />
+            <img src="/public/logo.webp" alt="Lush Guesser Logo" className="h-12 w-12" />
+          </picture>
         </div>
         
         <nav className="flex items-center space-x-8 font-medium text-sm tracking-wide">
@@ -60,11 +67,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {i18n.language === 'en' ? 'RU' : 'EN'}
           </button>
 
-          <button title={t('help.title')} className="hover:opacity-70 transition-opacity cursor-pointer">
+          <button
+            title={t('help.title')}
+            className="hover:opacity-70 transition-opacity cursor-pointer"
+            onClick={() => onOpenInfo('help')}
+          >
             <HelpCircle size={22} strokeWidth={1.5} />
-          </button>
-          <button title={t('profile.title')} className="hover:opacity-70 transition-opacity cursor-pointer">
-            <User size={22} strokeWidth={1.5} />
           </button>
         </div>
       </header>
@@ -87,17 +95,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </button>
       </main>
 
-      {/* Footer */}
-      <footer className="flex flex-col sm:flex-row items-center justify-between px-8 py-6 border-t border-lush-gray-border text-xs text-gray-500 bg-white">
-        <div className="flex space-x-6 mb-4 sm:mb-0">
-          <a href="#" className="hover:underline">Terms</a>
-          <a href="#" className="hover:underline">Privacy</a>
-          <a href="#" className="hover:underline">Support</a>
-        </div>
-        <div>
-          &copy; 2026 Lush Scent Guesser. Stay Fresh.
-        </div>
-      </footer>
+      <FooterLinks onOpenInfo={onOpenInfo} />
     </div>
   );
 };

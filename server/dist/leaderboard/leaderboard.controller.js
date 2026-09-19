@@ -34,7 +34,7 @@ let LeaderboardController = class LeaderboardController {
         if (score === undefined || score === null || typeof score !== 'number' || score < 0) {
             throw new common_1.BadRequestException('Score is required and must be a non-negative number');
         }
-        return this.leaderboardService.addScore(name.trim().substring(0, 20), score);
+        return this.leaderboardService.addScore(name.trim().substring(0, 20).trim(), score);
     }
 };
 exports.LeaderboardController = LeaderboardController;

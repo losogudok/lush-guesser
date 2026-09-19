@@ -42,12 +42,14 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
 
 6. **Preserve functionality**: Never change what the code does - only how it does it. All original features, outputs, and behaviors must remain intact.
 
+7. **Use the local strict bar**: Apply the thermo-nuclear review standard from `docs/release-checklist.md`: block structural regressions, avoid ad-hoc branching, keep abstractions direct, and require tests for behavior changes.
+
 # EXECUTION
 
 If you find improvements to make:
 
 1. Make the changes directly on this branch
-2. Run tests and type checking to ensure nothing is broken
+2. Run the relevant verification commands from `docs/sandcastle.md`
 3. Commit describing the refinements
 
 If the code is already clean and well-structured, do nothing.

@@ -1,22 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { HelpCircle, User, Loader2, Trophy } from 'lucide-react';
+import { HelpCircle, Loader2, Trophy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import FooterLinks from './FooterLinks';
+import type { InfoModalType } from './InfoModal';
 
 interface LeaderboardEntry {
   id: number;
   name: string;
   score: number;
   createdAt: string;
+  sample?: boolean;
 }
 
 interface LeaderboardScreenProps {
   onNavigate: (tab: 'play' | 'leaderboard') => void;
   activeTab: 'play' | 'leaderboard';
+  onOpenInfo: (type: InfoModalType) => void;
 }
 
 export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
   onNavigate,
   activeTab,
+  onOpenInfo,
 }) => {
   const { t, i18n } = useTranslation();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -32,18 +37,20 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
         if (!response.ok) {
           throw new Error('Failed to load high scores');
         }
-        const data = await response.json();
+        const data = (await response.json()) as LeaderboardEntry[];
         setEntries(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        setError(err.message || 'Error connecting to database');
+        setError(
+          err instanceof Error ? err.message : 'Error connecting to database',
+        );
         // Fallback mock scores to keep the UI beautiful
         setEntries([
-          { id: 1, name: 'Karma Queen', score: 450, createdAt: new Date().toISOString() },
-          { id: 2, name: 'Bath Bomb Bobby', score: 375, createdAt: new Date().toISOString() },
-          { id: 3, name: 'Lavender Larry', score: 300, createdAt: new Date().toISOString() },
-          { id: 4, name: 'Rose Petal', score: 250, createdAt: new Date().toISOString() },
-          { id: 5, name: 'Minty Mike', score: 175, createdAt: new Date().toISOString() },
+          { id: 1, name: 'Karma Queen', score: 450, createdAt: new Date().toISOString(), sample: true },
+          { id: 2, name: 'Bath Bomb Bobby', score: 375, createdAt: new Date().toISOString(), sample: true },
+          { id: 3, name: 'Lavender Larry', score: 300, createdAt: new Date().toISOString(), sample: true },
+          { id: 4, name: 'Rose Petal', score: 250, createdAt: new Date().toISOString(), sample: true },
+          { id: 5, name: 'Minty Mike', score: 175, createdAt: new Date().toISOString(), sample: true },
         ]);
       } finally {
         setLoading(false);
@@ -111,11 +118,12 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
             {i18n.language === 'en' ? 'RU' : 'EN'}
           </button>
 
-          <button title={t('help.title')} className="hover:opacity-70 transition-opacity cursor-pointer">
+          <button
+            title={t('help.title')}
+            className="hover:opacity-70 transition-opacity cursor-pointer"
+            onClick={() => onOpenInfo('help')}
+          >
             <HelpCircle size={22} strokeWidth={1.5} />
-          </button>
-          <button title={t('profile.title')} className="hover:opacity-70 transition-opacity cursor-pointer">
-            <User size={22} strokeWidth={1.5} />
           </button>
         </div>
       </header>
@@ -182,6 +190,11 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                       </td>
                       <td className="px-6 py-4 font-semibold text-lush-black text-sm md:text-base">
                         {entry.name}
+                        {entry.sample && (
+                          <span className="ml-2 rounded border border-yellow-300 bg-yellow-50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-yellow-800">
+                            {t('leaderboard.sample')}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 font-cabinet text-right pr-12 text-sm md:text-base text-lush-black">
                         {entry.score}
@@ -198,20 +211,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="flex flex-col sm:flex-row items-center justify-between px-8 py-6 border-t border-lush-gray-border text-xs text-gray-500 bg-white">
-        <div className="font-cabinet text-sm tracking-wide text-lush-black mb-4 sm:mb-0">
-          Lush Scent Guesser
-        </div>
-        <div className="flex space-x-6 mb-4 sm:mb-0">
-          <a href="#" className="hover:underline">Terms</a>
-          <a href="#" className="hover:underline">Privacy</a>
-          <a href="#" className="hover:underline">Support</a>
-        </div>
-        <div>
-          &copy; 2026 Lush Scent Guesser. Stay Fresh.
-        </div>
-      </footer>
+      <FooterLinks onOpenInfo={onOpenInfo} showBrand />
     </div>
   );
 };

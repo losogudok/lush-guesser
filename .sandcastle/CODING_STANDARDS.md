@@ -1,27 +1,27 @@
 # Coding Standards
 
-<!-- Customize this file with your project's coding standards.
-     The reviewer agent loads it during code review via @.sandcastle/CODING_STANDARDS.md
-     so these standards are enforced during review without costing tokens during implementation. -->
+## Scope
 
-## Style
+- Keep the app a no-auth fan quiz. Do not introduce accounts, profiles, or login flows unless explicitly requested.
+- Use the product language in `CONTEXT.md`: Player, Game Session, Round, Ingredient Clue, Product, and Leaderboard Entry.
+- Do not put implementation details in `CONTEXT.md`.
 
-<!-- Example:
-- Use camelCase for variables and functions
-- Use PascalCase for classes and types
-- Prefer named exports over default exports
--->
+## Frontend
+
+- Use functional React components with hooks and explicit prop types.
+- Keep user-facing strings in `frontend/src/i18n.ts` with both EN and RU translations.
+- Prefer existing Tailwind utility patterns and shared components over one-off styling.
+- Use lucide icons for controls when an icon exists.
+- Avoid dead controls: every visible button or link must do something useful.
+
+## Backend
+
+- Keep leaderboard API behavior backward-compatible unless the issue explicitly changes it.
+- Production schema changes must use explicit TypeORM migrations. Do not re-enable production `synchronize: true`.
+- Validate API inputs at the controller boundary and cover invalid cases with e2e tests.
 
 ## Testing
 
-<!-- Example:
-- Every public function must have at least one test
-- Use descriptive test names that explain the expected behavior
--->
-
-## Architecture
-
-<!-- Example:
-- Keep modules focused on a single responsibility
-- Prefer composition over inheritance
--->
+- Run the relevant subset while iterating.
+- Before committing, run the full project verification command from `docs/sandcastle.md`.
+- If a command cannot run in the sandbox, document the exact blocker in the final response and commit message.

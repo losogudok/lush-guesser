@@ -8,6 +8,9 @@ Only work on the issue specified.
 
 Work on branch {{BRANCH}}. Make commits and run tests.
 
+Use the product language in `CONTEXT.md` and the implementation rules in
+`.sandcastle/CODING_STANDARDS.md`.
+
 # CONTEXT
 
 Here are the last 10 commits:
@@ -35,13 +38,28 @@ If applicable, use RGR to complete the task.
 
 # FEEDBACK LOOPS
 
-Before committing, run `npm run typecheck` and `npm run test` to ensure the tests pass.
+Before committing, run:
+
+```bash
+npm run validate:catalog --prefix frontend
+npm run lint --prefix frontend
+npm run build --prefix frontend
+npm run lint --prefix server
+npm test --prefix server -- --passWithNoTests
+npm run test:e2e --prefix server
+npm run build --prefix server
+npm run test:e2e
+```
+
+If the task cannot reasonably affect one area, you may run a smaller subset
+while iterating, but the final commit should run the full command list unless
+there is a concrete sandbox blocker.
 
 # COMMIT
 
 Make a git commit. The commit message must:
 
-1. Start with `RALPH:` prefix
+1. Start with `Sandcastle:` prefix
 2. Include task completed + PRD reference
 3. Key decisions made
 4. Files changed
