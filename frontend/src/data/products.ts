@@ -21,8 +21,8 @@ export const products: Product[] = [
     },
     ingredients: ['Rose', 'Sandalwood', 'Violet'],
     description: {
-      en: 'The sugared almonds at an Italian wedding tell a story in three acts. Young love, the innocence of violet leaf. A sensual rose blooms as the relationship deepens, until the final chapter reveals the lasting comfort of sandalwood oil',
-      ru: 'Сводящий с ума цветочный аромат. Нежный абсолют цветков фиалки смешивается с чувственной розой, затем дымчатое масло сандалового дерева обозначает финальную главу - вечную любовь и комфорт.',
+      en: 'At an Italian wedding, sugared almonds tell a story in three acts: the innocence of violet leaf, the sensuality of rose as the relationship deepens, and the lasting comfort of sandalwood oil.',
+      ru: 'Сводящий с ума цветочный аромат. Нежный абсолют фиалки смешивается с чувственной розой, а дымчатое масло сандалового дерева завершает историю, символизируя вечную любовь и комфорт.',
     },
     color: '',
   },
@@ -34,7 +34,7 @@ export const products: Product[] = [
     },
     ingredients: ['Cedar', 'Clove'],
     description: {
-      en: "Spritz on this reassuring fragrance that's adored by anyone who tries it. Reminiscent of cozy nights in a log cabin, cedarwood and pine create a base of calming and earthy scents. A fresh splash of citrus and strong coffee note blend with tobacco and smoky vetivert for a raw, earthy fragrance that's full of memories.",
+      en: "Spritz on this reassuring fragrance, adored by everyone who tries it. Reminiscent of cozy nights in a log cabin, cedarwood and pine create a calming, earthy base. A fresh splash of citrus and a strong coffee note blend with tobacco and smoky vetivert to create a raw, earthy fragrance full of memories.",
       ru: 'Вызывая воспоминания о чтении старых книг и воскресном утреннем кофе, Dear John переносит вас обратно в детство. Как будто вы сидите у камина на коленях своего дедушки или гуляете по лесу с папой - этот древесный, пряный и уютный запах оставляет ощущение безопасности и сентиментальности. Масло дымчатого ветивера расслабляет разум и сглаживает печали. Масло кедрового дерева улучшает концентрацию, а масло цветов гвоздичного дерева успокаивает. Нота кофе завершает это ностальгическое путешествие, и уникальный утешающий аромат словно заключает вас в теплое, дымное объятие.',
     },
     color: '',
@@ -47,8 +47,8 @@ export const products: Product[] = [
     },
     ingredients: ['Lemongrass', 'Bergamot', 'Ylang Ylang', 'Rose'],
     description: {
-      en: "One spritz of this sweet scent and all of a sudden you're in a rom-com of your own making. Flirty rose and jasmine swirl together with crisp lemongrass and bergamot to create a sweet, tart take on a delicious caramel apple scent. Cover yourself in this alluring perfume and get ready to fall head over heels.",
-      ru: 'Оставьте любовные зелья и взгляните на этот опьяняющий аромат в качестве средства для привлечения поклонников. Вначале воздух наполняет напористый лемонграсс, сквозь него просвечивает солнечный бергамот. А затем - головокружительный иланг-иланг добавляет сладкое послевкусие, которое сводит с ума.',
+      en: "One spritz of this sweet scent and all of a sudden you're in a rom-com of your own making. Flirty rose swirls with crisp lemongrass and bergamot to create a sweet, tart take on a delicious caramel apple scent. Cover yourself in this alluring perfume and get ready to fall head over heels.",
+      ru: 'Забудьте о любовных зельях — этот опьяняющий аромат сам станет вашим союзником в привлечении поклонников. Сначала воздух наполняет напористый лемонграсс, сквозь который просвечивает солнечный бергамот. Затем головокружительный иланг-иланг добавляет сладкое послевкусие, которое сводит с ума.',
     },
     color: '',
   },
@@ -73,7 +73,7 @@ export const products: Product[] = [
     },
     ingredients: ['Rose', 'Geranium', 'Lemon'],
     description: {
-      en: 'A sweet, jammy, and romantic blend of rose oil, geranium, and fresh lemon. Like walking through a sun-drenched Turkish rose garden in full bloom.',
+      en: 'A sweet, jammy, and romantic blend of rose oil, geranium, and fresh lemon. It is like walking through a sun-drenched Turkish rose garden in full bloom.',
       ru: 'Прогуляйтесь по бесконечным полям пудрово-розовых лепестков с этим изысканным ароматом, в котором роскошная герань сочетается с розовым маслом из местечка Сенир в Турции.',
     },
     color: '#E91E63',
@@ -100,7 +100,7 @@ export const products: Product[] = [
     ingredients: ['Mint', 'Tarragon', 'Sandalwood', 'Lavender', 'Thyme', 'Neroli'],
     description: {
       en: 'A clean, bracing rush of fresh spearmint, tarragon, thyme, and rich sandalwood. It\'s an invigorating breath of fresh air designed to keep you feeling crisp and revitalized.',
-      ru: 'Дёрти это многослойная композиция из перечной мяты, эстрагона и тимьяна, которая настигает вас как порыв свежего ветра. Перечная мята - освежающая, энергичная нота, проясняющая сознание и охлаждающая кожу. Сандаловое дерево и лаванда добавляют аромату цветочную и древесную нотки.',
+      ru: 'Дёрти — это многослойная композиция из перечной мяты, эстрагона и тимьяна, которая настигает вас, как порыв свежего ветра. Перечная мята — освежающая, энергичная нота, проясняющая сознание и охлаждающая кожу. Сандаловое дерево и лаванда добавляют аромату цветочные и древесные ноты.',
     },
     color: '#00ACC1',
   },
@@ -113,7 +113,7 @@ export const products: Product[] = [
     ingredients: ['Black Pepper', 'Patchouli', 'Vanilla'],
     description: {
       en: 'A mischievous, festive blend of spicy black pepper, deep patchouli, and sweet, warm vanilla. Mischief managed with a rich, herbal, and sweet aroma.',
-      ru: 'Масло пачули с острова Суматра смешивается с перечными нотами на сумасшедшем карнавале Праздника дураков.',
+      ru: 'Масло пачули с острова Суматра смешивается с перечными нотами в безумном карнавале Праздника дураков.',
     },
     color: '#43A047',
   },
@@ -125,7 +125,7 @@ export const products: Product[] = [
     },
     ingredients: ['Blackcurrant', 'Cypress'],
     description: {
-      en: 'A reassuring hug of sweet blackcurrant, uplifting bergamot, and cozy cypress wood. Warm, fruity, and nostalgic, it feels just like your favorite childhood blanket.',
+      en: 'A reassuring hug of sweet blackcurrant and cozy cypress wood. Warm, fruity, and nostalgic, it feels just like your favorite childhood blanket.',
       ru: 'Утешающие объятия сладкой черной смородины и уютного кипариса. Теплый, фруктовый и ностальгический аромат, напоминающий любимый плед из детства.',
     },
     color: '#D81B60',
@@ -151,8 +151,8 @@ export const products: Product[] = [
     },
     ingredients: ['Lavender', 'Tonka Bean', 'Ylang Ylang', 'Benzoin'],
     description: {
-      en: 'A soft bedtime blend of lavender, creamy oat milk, sweet tonka, and gentle neroli. Calm, cozy, and made for winding down.',
-      ru: 'Мягкая вечерняя смесь лаванды, сливочного овсяного молока, сладких бобов тонка и нежного нероли. Спокойная и уютная.',
+      en: 'A soft bedtime blend of lavender, sweet tonka, dreamy ylang ylang, and warm benzoin. Calm, cozy, and made for winding down.',
+      ru: 'Мягкая вечерняя композиция из лаванды, сладких бобов тонка, мечтательного иланг-иланга и тёплого бензоина. Спокойная и уютная.',
     },
     color: '#7E57C2',
   },
@@ -165,7 +165,7 @@ export const products: Product[] = [
     ingredients: ['Bergamot', 'Sweet Orange'],
     description: {
       en: 'A golden, comforting blend of honeyed sweetness, citrus brightness, and soothing aloe. Warm, cheerful, and softly creamy.',
-      ru: 'Золотистый уютный аромат медовой сладости, цитрусовой свежести и успокаивающего алоэ. Теплый, радостный и мягко-кремовый.',
+      ru: 'Золотистый, уютный аромат медовой сладости, цитрусовой свежести и успокаивающего алоэ. Тёплый, радостный и мягко-кремовый.',
     },
     color: '#F9A825',
   },
@@ -178,7 +178,7 @@ export const products: Product[] = [
     ingredients: ['Bergamot', 'Olibanum', 'Litsea Cubeba'],
     description: {
       en: 'A creamy citrus cloud of avocado, bergamot, olibanum, and litsea cubeba. Fresh, fizzy, and softly green.',
-      ru: 'Кремовое цитрусовое облако из авокадо, бергамота, олибанума и литсеи кубеба. Свежее, искристое и мягко-зеленое.',
+      ru: 'Кремовое цитрусовое облако из авокадо, бергамота, олибанума и литсеи кубеба. Свежее, искристое и мягко-зелёное.',
     },
     color: '#8BC34A',
   },
@@ -203,8 +203,8 @@ export const products: Product[] = [
     },
     ingredients: ['Neroli', 'Sandalwood', 'Bergamot'],
     description: {
-      en: 'A green rush of fresh wheatgrass, bright neroli, grounded sandalwood, and bergamot. Clean, earthy, and outdoorsy.',
-      ru: 'В этом напоминающем лес аромате оттенки свежескошенной травы встретились с захватывающими нероли, а яркий бергамот устроился среди землистого сандала.',
+      en: 'A green rush of bright neroli, grounded sandalwood, and bergamot. Clean, earthy, and outdoorsy.',
+      ru: 'В этом зелёном аромате свежая трава сочетается с яркими нотами нероли, а бергамот дополняет землистые оттенки сандала.',
     },
     color: '#2E7D32',
   },
@@ -216,7 +216,7 @@ export const products: Product[] = [
     },
     ingredients: ['Ylang Ylang', 'Tonka Bean', 'Rose', 'Jasmine'],
     description: {
-      en: '',
+      en: 'Intoxicating jasmine and ylang ylang mingle with sweet rose to create a bouquet that first overwhelms, then soothes. Let this floral fragrance carry you to a serene space where beauty and its inevitable decay can be contemplated without fear. It is meditation, acceptance, and optimism expressed in magnificent floral form.',
       ru: 'Пьянящий жасмин и иланг-иланг сочетаются со сладкой розой, образуя букет, который сначала подавляет, а затем успокаивает. Позвольте этому цветочному аромату перенести вас в безмятежное пространство, где красоту и ее неизбежный упадок можно созерцать без страха. Это медитация, принятие и оптимизм, переданные в великолепном цветочном облике.',
     },
     color: '#FF6F00',
