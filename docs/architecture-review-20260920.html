@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Architecture review for lush-guesser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose", flowchart: { curve: "basis" } });
+    </script>
+    <style>
+      :root { color-scheme: light; }
+      .seam-line { border-color: #64748b; border-style: dashed; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .leak-arrow { color: #dc2626; }
+      .diagram { min-height: 285px; }
+      .module-box { border: 2px solid #0f172a; background: #fff; }
+      .shallow-box { border: 1px solid #94a3b8; background: #f8fafc; }
+      .internal-box { border: 1px dashed #94a3b8; background: rgba(255,255,255,.08); }
+      .status-dot { width: .65rem; height: .65rem; border-radius: 9999px; display: inline-block; flex: none; margin-top: .32rem; }
+      .mermaid { display: flex; align-items: center; justify-content: center; min-height: 240px; }
+      code { overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-6xl mx-auto px-5 py-12 space-y-12">
+      <header class="border-b border-slate-300 pb-8">
+        <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Architecture review · 20 Sep 2026</p>
+            <h1 class="mt-2 font-serif text-4xl md:text-5xl">lush-guesser</h1>
+          </div>
+          <div class="grid grid-cols-2 gap-x-5 gap-y-2 text-xs text-slate-600 md:grid-cols-4">
+            <span class="flex items-center gap-2"><span class="h-4 w-5 border-2 border-slate-900 bg-white"></span> module</span>
+            <span class="flex items-center gap-2"><span class="h-0 w-6 border-t-2 border-dashed border-slate-500"></span> seam</span>
+            <span class="flex items-center gap-2"><span class="text-red-600 text-lg">→</span> leakage</span>
+            <span class="flex items-center gap-2"><span class="h-4 w-5 bg-slate-900"></span> deep module</span>
+          </div>
+        </div>
+      </header>
+
+      <section id="candidates" class="space-y-12">
+        <article id="persistence" class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm md:p-8">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800">Strong</span>
+            <span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-800">local-substitutable</span>
+            <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-800">launch gate</span>
+          </div>
+          <h2 class="mt-4 font-serif text-3xl">Put Leaderboard Entry persistence outside the release tree</h2>
+          <p class="mt-3 font-mono text-xs leading-6 text-slate-600">data/database.sqlite · .gitignore:29–31 · docker-compose.yml:9–13,27–28 · .github/workflows/ci-cd.yml:100–105 · server/src/app.module.ts:13–20</p>
+
+          <div class="mt-7 grid gap-5 lg:grid-cols-2">
+            <div class="diagram rounded-xl border border-red-200 bg-red-50/40 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-red-700">Before · release and data share one path</p>
+              <pre class="mermaid">
+flowchart TB
+  C[Approved commit] --> R[git checkout --force\ngit reset --hard]
+  R --> D[tracked ./data/database.sqlite]
+  B[Backend] -->|writes Leaderboard Entries| D
+  D -->|bind mount| S[SQLite adapter]
+  classDef danger fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#7f1d1d;
+  class D danger;
+              </pre>
+              <p class="text-center text-xs font-semibold text-red-700">Deploy can restore the committed snapshot over live state.</p>
+            </div>
+            <div class="diagram rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">After · persistence adapter owns mutable state</p>
+              <pre class="mermaid">
+flowchart TB
+  C[Approved commit] --> R[SSH deployment module]
+  R --> A[immutable release files]
+  B[Backend] --> S[SQLite adapter]
+  S --> V[(deployment-owned volume)]
+  R -. readiness check .-> B
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff,stroke-width:3px;
+  class S deep;
+              </pre>
+              <p class="text-center text-xs font-semibold text-emerald-800">The ADR-0001 SSH seam stays; mutable state stops leaking through it.</p>
+            </div>
+          </div>
+
+          <div class="mt-6 grid gap-4 md:grid-cols-3">
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Problem</h3><p class="mt-2 text-sm">The SQLite adapter writes into a tracked file that the deployment implementation force-resets.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Solution</h3><p class="mt-2 text-sm">Deepen the persistence module: deployment-owned storage behind the existing Leaderboard Entry seam.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Deletion test</h3><p class="mt-2 text-sm">Deleting the tracked database removes accidental coupling; no domain complexity moves.</p></div>
+          </div>
+          <ul class="mt-5 grid gap-2 text-sm sm:grid-cols-2">
+            <li>• locality: mutable state in one adapter</li>
+            <li>• leverage: every deploy preserves entries</li>
+            <li>• tests cross the Leaderboard Entry interface</li>
+            <li>• backup and restore become verifiable</li>
+          </ul>
+          <div class="mt-5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"><strong>ADR check:</strong> preserves ADR-0001; only the persistence implementation moves outside Git.</div>
+        </article>
+
+        <article id="catalog" class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm md:p-8">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800">Strong</span>
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-700">in-process</span>
+            <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-800">CI failing</span>
+          </div>
+          <h2 class="mt-4 font-serif text-3xl">Deepen the Product and Ingredient Clue catalog</h2>
+          <p class="mt-3 font-mono text-xs leading-6 text-slate-600">frontend/src/data/products.ts:1–268 · frontend/scripts/validate-catalog.ts:11–52 · frontend/src/components/GameScreen.tsx:13,64–68 · frontend/src/components/game/IngredientClueCarousel.tsx:7,49–55</p>
+
+          <div class="mt-7 grid gap-5 lg:grid-cols-2">
+            <div class="diagram rounded-xl border border-slate-200 bg-slate-50 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Before · catalog rules leak</p>
+              <div class="mt-5 space-y-3">
+                <div class="shallow-box rounded-lg p-3"><span class="text-xs uppercase tracking-wider">products.ts</span><div class="mt-1 text-sm">Product data + image paths + silent default</div></div>
+                <div class="flex justify-center text-2xl leak-arrow">↙ ↓ ↘</div>
+                <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div class="shallow-box rounded p-3">validator<br/><strong>exactly 4</strong></div>
+                  <div class="shallow-box rounded p-3">Game Session<br/><strong>cap 4</strong></div>
+                  <div class="shallow-box rounded p-3">carousel<br/><strong>cap 4</strong></div>
+                </div>
+                <div class="rounded border border-red-300 bg-red-50 p-3 text-center text-xs text-red-800">Current Product data has 2–6 clues; validator fails.</div>
+              </div>
+            </div>
+            <div class="diagram rounded-xl border border-indigo-200 bg-indigo-50/30 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-indigo-700">After · one deep catalog module</p>
+              <div class="deep mt-5 rounded-xl border-4 border-slate-900 p-5 text-white shadow-lg">
+                <div class="rounded border border-white/50 bg-white px-3 py-2 text-center text-xs font-bold uppercase tracking-wider text-slate-900">small Product catalog interface</div>
+                <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                  <div class="internal-box rounded p-3">Product invariants</div>
+                  <div class="internal-box rounded p-3">Ingredient Clue policy</div>
+                  <div class="internal-box rounded p-3">image resolution</div>
+                  <div class="internal-box rounded p-3">validation results</div>
+                </div>
+              </div>
+              <div class="mt-4 flex justify-center gap-3 text-xs"><span class="module-box rounded px-3 py-2">Game Session caller</span><span class="module-box rounded px-3 py-2">CI caller</span></div>
+            </div>
+          </div>
+
+          <div class="mt-6 grid gap-4 md:grid-cols-3">
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Problem</h3><p class="mt-2 text-sm">The Product interface does not own the Ingredient Clue policy; callers encode conflicting invariants.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Solution</h3><p class="mt-2 text-sm">Deepen the catalog module so data, clue policy, images, and validation have one locality.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Deletion test</h3><p class="mt-2 text-sm">Deleting it would spread Product and image knowledge across the game and CI callers.</p></div>
+          </div>
+          <ul class="mt-5 grid gap-2 text-sm sm:grid-cols-2">
+            <li>• locality: one Ingredient Clue policy</li>
+            <li>• leverage: game and CI agree</li>
+            <li>• interface becomes the test surface</li>
+            <li>• silent image fallback disappears</li>
+          </ul>
+        </article>
+
+        <article id="game-session" class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm md:p-8">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800">Strong</span>
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-700">in-process</span>
+          </div>
+          <h2 class="mt-4 font-serif text-3xl">Concentrate Game Session rules behind one seam</h2>
+          <p class="mt-3 font-mono text-xs leading-6 text-slate-600">frontend/src/components/GameScreen.tsx:20–119 · frontend/src/App.tsx:11–55 · frontend/src/components/game/AnswerChoices.tsx:3–29 · frontend/src/components/game/RoundResult.tsx:8–72 · tests/e2e/game-smoke.spec.ts</p>
+
+          <div class="mt-7 grid gap-5 lg:grid-cols-2">
+            <div class="diagram rounded-xl border border-slate-200 bg-slate-50 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Before · DOM is the rules test surface</p>
+              <pre class="mermaid">
+flowchart TB
+  GS[GameScreen React state]
+  GS --> P[Math.random playlist]
+  GS --> O[Math.random options]
+  GS --> R[reveal count]
+  GS --> S[score rules]
+  GS --> T[round transitions]
+  E[E2E test] -->|click 10 rounds| GS
+  E -.->|monkeypatch global Math.random| P
+  classDef leak fill:#fee2e2,stroke:#dc2626,color:#7f1d1d;
+  class P,O,R,S,T leak;
+              </pre>
+            </div>
+            <div class="diagram rounded-xl border border-indigo-200 bg-indigo-50/30 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-indigo-700">After · rules become a deep module</p>
+              <div class="deep mt-5 rounded-xl border-4 border-slate-900 p-5 text-white">
+                <div class="rounded bg-white px-3 py-2 text-center text-xs font-bold uppercase tracking-wider text-slate-900">small Game Session interface</div>
+                <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                  <div class="internal-box rounded p-3">playlist</div><div class="internal-box rounded p-3">Round options</div>
+                  <div class="internal-box rounded p-3">reveal and score</div><div class="internal-box rounded p-3">transitions</div>
+                </div>
+              </div>
+              <div class="mt-4 grid grid-cols-2 gap-3 text-center text-xs"><div class="module-box rounded p-3">React rendering</div><div class="module-box rounded p-3">direct rule tests</div></div>
+            </div>
+          </div>
+
+          <div class="mt-6 grid gap-4 md:grid-cols-3">
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Problem</h3><p class="mt-2 text-sm">Playlist, Round, scoring, and transitions are embedded in rendering state and testable only through browser behavior.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Solution</h3><p class="mt-2 text-sm">Deepen one Game Session module; rendering consumes outcomes instead of owning rules.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Deletion test</h3><p class="mt-2 text-sm">Deleting the new module would scatter the same rules back across screens and tests.</p></div>
+          </div>
+          <ul class="mt-5 grid gap-2 text-sm sm:grid-cols-2">
+            <li>• locality: Game Session rules together</li>
+            <li>• leverage: one implementation, every screen</li>
+            <li>• deterministic tests at one interface</li>
+            <li>• browser tests keep only journeys</li>
+          </ul>
+        </article>
+
+        <article id="release-readiness" class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm md:p-8">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-800">Strong</span>
+            <span class="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-violet-800">ports &amp; adapters</span>
+          </div>
+          <h2 class="mt-4 font-serif text-3xl">Make production readiness part of the release module</h2>
+          <p class="mt-3 font-mono text-xs leading-6 text-slate-600">.github/workflows/ci-cd.yml:72–105 · docker-compose.yml:1–25 · docker-compose.dev.yml:19–35,49–51 · frontend/Caddyfile:8–12 · docs/adr/0001-use-ssh-driven-docker-compose-deployments.md</p>
+
+          <div class="mt-7 grid gap-5 lg:grid-cols-2">
+            <div class="diagram rounded-xl border border-red-200 bg-red-50/40 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-red-700">Before · start is treated as ready</p>
+              <pre class="mermaid">
+sequenceDiagram
+  participant CI
+  participant SSH
+  participant Compose
+  participant Backend
+  CI->>SSH: deploy approved commit
+  SSH->>Compose: up -d --build
+  Compose-->>SSH: containers started
+  SSH-->>CI: success
+  Backend--xBackend: migration or boot may fail later
+              </pre>
+            </div>
+            <div class="diagram rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">After · readiness closes the seam</p>
+              <pre class="mermaid">
+sequenceDiagram
+  participant CI
+  participant Release
+  participant Compose
+  participant PublicHTTP
+  CI->>Release: deploy approved commit
+  Release->>Compose: build and start
+  Compose-->>Release: health state
+  Release->>PublicHTTP: game + Leaderboard check
+  alt ready
+    Release-->>CI: success
+  else not ready
+    Release-->>CI: failure with recovery path
+  end
+              </pre>
+            </div>
+          </div>
+
+          <div class="mt-6 grid gap-4 md:grid-cols-3">
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Problem</h3><p class="mt-2 text-sm">The release interface promises success after detached start, before migrations and public routing are observed.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Solution</h3><p class="mt-2 text-sm">Deepen the release module so start, readiness, public verification, and recovery share one implementation.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Deletion test</h3><p class="mt-2 text-sm">Deleting it would spread deployment ordering and verification back into CI and operator steps.</p></div>
+          </div>
+          <ul class="mt-5 grid gap-2 text-sm sm:grid-cols-2">
+            <li>• locality: release knowledge in one module</li>
+            <li>• leverage: one check for every deploy</li>
+            <li>• production adapter proves readiness</li>
+            <li>• failures stop at the SSH seam</li>
+          </ul>
+          <div class="mt-5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"><strong>ADR check:</strong> preserves ADR-0001; SSH remains the remote-owned seam.</div>
+        </article>
+
+        <article id="leaderboard-intake" class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm md:p-8">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800">Worth exploring</span>
+            <span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-800">local-substitutable</span>
+          </div>
+          <h2 class="mt-4 font-serif text-3xl">Deepen Leaderboard Entry intake</h2>
+          <p class="mt-3 font-mono text-xs leading-6 text-slate-600">frontend/src/components/GameOverScreen.tsx:44–76 · frontend/src/components/LeaderboardScreen.tsx:31–61 · server/src/leaderboard/leaderboard.controller.ts:17–38 · server/src/leaderboard/leaderboard.service.ts:6–23 · server/test/app.e2e-spec.ts:25–78</p>
+
+          <div class="mt-7 grid gap-5 lg:grid-cols-2">
+            <div class="diagram rounded-xl border border-slate-200 bg-slate-50 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Before · wide knowledge, shallow middle</p>
+              <div class="mt-5 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 text-center text-xs">
+                <div class="shallow-box rounded p-3">browser<br/>name + score</div><span class="leak-arrow text-xl">→</span>
+                <div class="shallow-box rounded p-3">controller<br/>validate + trim</div><span class="leak-arrow text-xl">→</span>
+                <div class="shallow-box rounded p-3">leaderboard.service.ts<br/>pass through</div>
+              </div>
+              <div class="mt-8 flex items-center justify-center gap-3 text-xs"><span class="rounded border border-red-300 bg-red-50 px-3 py-2 text-red-800">any nonnegative browser score</span><span class="leak-arrow text-xl">→</span><span class="module-box rounded px-3 py-2">SQLite</span></div>
+              <div class="mt-7 rounded border border-slate-300 p-3 text-center text-xs">Deletion test: remove the middle module and little complexity reappears.</div>
+            </div>
+            <div class="diagram rounded-xl border border-indigo-200 bg-indigo-50/30 p-5">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-indigo-700">After · one deep intake module</p>
+              <div class="deep mt-5 rounded-xl border-4 border-slate-900 p-5 text-white">
+                <div class="rounded bg-white px-3 py-2 text-center text-xs font-bold uppercase tracking-wider text-slate-900">small Leaderboard Entry interface</div>
+                <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                  <div class="internal-box rounded p-3">validation</div><div class="internal-box rounded p-3">normalization</div>
+                  <div class="internal-box rounded p-3">ranking rules</div><div class="internal-box rounded p-3">persistence</div>
+                </div>
+              </div>
+              <div class="mt-4 flex justify-center gap-3 text-xs"><span class="module-box rounded px-3 py-2">HTTP adapter</span><span class="module-box rounded px-3 py-2">temp SQLite test adapter</span></div>
+            </div>
+          </div>
+
+          <div class="mt-6 grid gap-4 md:grid-cols-3">
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Problem</h3><p class="mt-2 text-sm">Leaderboard Entry rules leak across browser, controller, and persistence while the middle module is shallow.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Solution</h3><p class="mt-2 text-sm">Deepen intake so validation, normalization, ranking, and persistence share one locality.</p></div>
+            <div><h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Deletion test</h3><p class="mt-2 text-sm">The current middle module deletes cleanly; the deepened one would push rules back into multiple callers.</p></div>
+          </div>
+          <ul class="mt-5 grid gap-2 text-sm sm:grid-cols-2">
+            <li>• locality: one acceptance policy</li>
+            <li>• leverage: every caller gets same rules</li>
+            <li>• tests use one observable interface</li>
+            <li>• persistence details stop leaking</li>
+          </ul>
+        </article>
+      </section>
+
+      <section id="release-snapshot" class="rounded-2xl border border-slate-800 bg-slate-950 p-6 text-white md:p-8">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">Current production gate snapshot</p>
+        <div class="mt-5 grid gap-4 md:grid-cols-2">
+          <div class="flex gap-3"><span class="status-dot bg-red-500"></span><p class="text-sm"><strong>Block:</strong> tracked live SQLite file can be reset by deploy.</p></div>
+          <div class="flex gap-3"><span class="status-dot bg-red-500"></span><p class="text-sm"><strong>Block:</strong> catalog validation fails on clue counts, colors, Lemon, and Neroli.</p></div>
+          <div class="flex gap-3"><span class="status-dot bg-amber-400"></span><p class="text-sm"><strong>Review:</strong> server production audit reports 14 findings, including 1 critical.</p></div>
+          <div class="flex gap-3"><span class="status-dot bg-amber-400"></span><p class="text-sm"><strong>Local blocker:</strong> browser test cannot rebuild tracked root-owned <code>server/dist</code>.</p></div>
+          <div class="flex gap-3"><span class="status-dot bg-emerald-400"></span><p class="text-sm"><strong>Pass:</strong> frontend lint/build and frontend production audit.</p></div>
+          <div class="flex gap-3"><span class="status-dot bg-emerald-400"></span><p class="text-sm"><strong>Pass:</strong> server lint, type-check, 5 e2e checks, Compose syntax.</p></div>
+        </div>
+      </section>
+
+      <section id="top-recommendation" class="rounded-2xl border-2 border-emerald-700 bg-emerald-50 p-7 md:p-9">
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-700">Top recommendation</p>
+        <h2 class="mt-3 font-serif text-3xl"><a class="underline decoration-emerald-500 underline-offset-4" href="#persistence">Put Leaderboard Entry persistence outside the release tree</a></h2>
+        <p class="mt-3 text-base text-slate-700">It is the only candidate with a credible deploy-time data-loss path; fix and prove persistence before any production release.</p>
+      </section>
+    </main>
+  </body>
+</html>
