@@ -32,6 +32,10 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      - name: Test product catalog
+        working-directory: frontend
+        run: npm run test:catalog
+
       - name: Validate product catalog
         working-directory: frontend
         run: npm run validate:catalog
@@ -81,6 +85,9 @@ jobs:
       - name: Build production images
         run: docker compose build
 
+      - name: Verify Leaderboard Entry persistence
+        run: ./scripts/check-leaderboard-persistence.sh
+
   deploy:
     name: Deploy production
     runs-on: ubuntu-latest
@@ -99,9 +106,26 @@ jobs:
           envs: GITHUB_SHA,DEPLOY_PATH
           script: |
             cd "$DEPLOY_PATH"
+            migration_started=0
+            restart_backend_on_failure() {
+              status=$?
+              if [ "$status" -ne 0 ] && [ "$migration_started" -eq 1 ]; then
+                docker compose up -d backend || true
+              fi
+              exit "$status"
+            }
+            trap restart_backend_on_failure EXIT
+            volume_name="lush-guesser-leaderboard-data"
+            docker volume create "$volume_name" >/dev/null
+            if [ -f data/database.sqlite ] && ! docker run --rm -v "$volume_name:/target" alpine:3.21 test -f /target/database.sqlite; then
+              migration_started=1
+              docker compose stop backend
+              docker run --rm -v "$PWD/data/database.sqlite:/source/database.sqlite:ro" -v "$volume_name:/target" alpine:3.21 cp /source/database.sqlite /target/database.sqlite
+            fi
             git fetch --prune origin
             git checkout --force "$GITHUB_SHA"
             git reset --hard "$GITHUB_SHA"
             docker compose up -d --build --remove-orphans
+            migration_started=0
         env:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}

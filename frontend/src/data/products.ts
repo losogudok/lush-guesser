@@ -1,18 +1,29 @@
 export interface Product {
-  id: string;
-  name: {
-    en: string;
-    ru: string;
+  readonly id: string;
+  readonly name: {
+    readonly en: string;
+    readonly ru: string;
   };
-  ingredients: string[];
-  description: {
-    en: string;
-    ru: string;
+  readonly ingredients: readonly string[];
+  readonly description: {
+    readonly en: string;
+    readonly ru: string;
   };
-  color: string; // Dynamic overlay success color
+  readonly color: string;
 }
 
-export const products: Product[] = [
+export interface ProductCatalog {
+  readonly products: readonly Product[];
+  getIngredientImage(ingredient: string): string;
+  validateAssets(assetExists: (imagePath: string) => boolean): void;
+}
+
+const MIN_PRODUCT_COUNT = 12;
+const MIN_INGREDIENT_CLUE_COUNT = 2;
+const MAX_INGREDIENT_CLUE_COUNT = 4;
+const DISPLAY_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+
+const productDefinitions: Product[] = [
   {
     id: 'confetti',
     name: {
@@ -24,7 +35,7 @@ export const products: Product[] = [
       en: 'At an Italian wedding, sugared almonds tell a story in three acts: the innocence of violet leaf, the sensuality of rose as the relationship deepens, and the lasting comfort of sandalwood oil.',
       ru: 'Сводящий с ума цветочный аромат. Нежный абсолют фиалки смешивается с чувственной розой, а дымчатое масло сандалового дерева завершает историю, символизируя вечную любовь и комфорт.',
     },
-    color: '',
+    color: '#A779B8',
   },
   {
     id: 'dear-john',
@@ -37,7 +48,7 @@ export const products: Product[] = [
       en: "Spritz on this reassuring fragrance, adored by everyone who tries it. Reminiscent of cozy nights in a log cabin, cedarwood and pine create a calming, earthy base. A fresh splash of citrus and a strong coffee note blend with tobacco and smoky vetivert to create a raw, earthy fragrance full of memories.",
       ru: 'Вызывая воспоминания о чтении старых книг и воскресном утреннем кофе, Dear John переносит вас обратно в детство. Как будто вы сидите у камина на коленях своего дедушки или гуляете по лесу с папой - этот древесный, пряный и уютный запах оставляет ощущение безопасности и сентиментальности. Масло дымчатого ветивера расслабляет разум и сглаживает печали. Масло кедрового дерева улучшает концентрацию, а масло цветов гвоздичного дерева успокаивает. Нота кофе завершает это ностальгическое путешествие, и уникальный утешающий аромат словно заключает вас в теплое, дымное объятие.',
     },
-    color: '',
+    color: '#795548',
   },
   {
     id: 'love',
@@ -50,7 +61,7 @@ export const products: Product[] = [
       en: "One spritz of this sweet scent and all of a sudden you're in a rom-com of your own making. Flirty rose swirls with crisp lemongrass and bergamot to create a sweet, tart take on a delicious caramel apple scent. Cover yourself in this alluring perfume and get ready to fall head over heels.",
       ru: 'Забудьте о любовных зельях — этот опьяняющий аромат сам станет вашим союзником в привлечении поклонников. Сначала воздух наполняет напористый лемонграсс, сквозь который просвечивает солнечный бергамот. Затем головокружительный иланг-иланг добавляет сладкое послевкусие, которое сводит с ума.',
     },
-    color: '',
+    color: '#EC407A',
   },
   {
     id: 'karma',
@@ -71,7 +82,7 @@ export const products: Product[] = [
       en: 'Rose Jam',
       ru: 'Rose Jam',
     },
-    ingredients: ['Rose', 'Geranium', 'Lemon'],
+    ingredients: ['Rose', 'Geranium'],
     description: {
       en: 'A sweet, jammy, and romantic blend of rose oil, geranium, and fresh lemon. It is like walking through a sun-drenched Turkish rose garden in full bloom.',
       ru: 'Прогуляйтесь по бесконечным полям пудрово-розовых лепестков с этим изысканным ароматом, в котором роскошная герань сочетается с розовым маслом из местечка Сенир в Турции.',
@@ -97,7 +108,7 @@ export const products: Product[] = [
       en: 'Dirty',
       ru: 'Dirty',
     },
-    ingredients: ['Mint', 'Tarragon', 'Sandalwood', 'Lavender', 'Thyme', 'Neroli'],
+    ingredients: ['Mint', 'Tarragon', 'Sandalwood', 'Lavender'],
     description: {
       en: 'A clean, bracing rush of fresh spearmint, tarragon, thyme, and rich sandalwood. It\'s an invigorating breath of fresh air designed to keep you feeling crisp and revitalized.',
       ru: 'Дёрти — это многослойная композиция из перечной мяты, эстрагона и тимьяна, которая настигает вас, как порыв свежего ветра. Перечная мята — освежающая, энергичная нота, проясняющая сознание и охлаждающая кожу. Сандаловое дерево и лаванда добавляют аромату цветочные и древесные ноты.',
@@ -201,7 +212,7 @@ export const products: Product[] = [
       en: 'Grass',
       ru: 'Grass',
     },
-    ingredients: ['Neroli', 'Sandalwood', 'Bergamot'],
+    ingredients: ['Sandalwood', 'Bergamot'],
     description: {
       en: 'A green rush of bright neroli, grounded sandalwood, and bergamot. Clean, earthy, and outdoorsy.',
       ru: 'В этом зелёном аромате свежая трава сочетается с яркими нотами нероли, а бергамот дополняет землистые оттенки сандала.',
@@ -223,7 +234,7 @@ export const products: Product[] = [
   },
 ];
 
-const ingredientImages: Record<string, string> = {
+const ingredientImages: Readonly<Record<string, string>> = {
   almond: '/images/ingredients/almond.png',
   benzoin: '/images/ingredients/benzoin.png',
   bergamot: '/images/ingredients/bergamot.png',
@@ -232,24 +243,18 @@ const ingredientImages: Record<string, string> = {
   cedar: '/images/ingredients/cedar.png',
   clove: '/images/ingredients/clove.png',
   cypress: '/images/ingredients/cypress.png',
-  frankincense: '/images/ingredients/frankincense.png',
   geranium: '/images/ingredients/geranium.png',
   jasmine: '/images/ingredients/jasmine.png',
   lavender: '/images/ingredients/lavender.png',
-  lemon: '/images/ingredients/lemon.png',
   lemongrass: '/images/ingredients/lemongrass.png',
-  lime: '/images/ingredients/lime.png',
   'litsea cubeba': '/images/ingredients/litsea_cubeba.png',
   mint: '/images/ingredients/mint.png',
-  neroli: '/images/ingredients/neroli.png',
   olibanum: '/images/ingredients/olibanum.png',
   patchouli: '/images/ingredients/patchouli.png',
-  pear: '/images/ingredients/pear.png',
   pine: '/images/ingredients/pine.png',
   rose: '/images/ingredients/rose.png',
   sandalwood: '/images/ingredients/sandalwood.png',
   'sea salt': '/images/ingredients/sea_salt.png',
-  'sicilian mandarin': '/images/ingredients/sicilian_mandarin.png',
   'sweet orange': '/images/ingredients/sweet_orange.png',
   tarragon: '/images/ingredients/tarragon.png',
   thyme: '/images/ingredients/thyme.png',
@@ -259,10 +264,98 @@ const ingredientImages: Record<string, string> = {
   'ylang ylang': '/images/ingredients/ylang_ylang.png',
 };
 
-export const getIngredientImage = (ingredient: string): string => {
-  const name = ingredient.toLowerCase().trim();
-  return ingredientImages[name] ?? '/images/ingredients/default.png';
+const normalizeIngredientName = (ingredient: string) =>
+  ingredient.toLowerCase().trim();
+
+const getMappedIngredientImage = (ingredient: string): string | undefined =>
+  ingredientImages[normalizeIngredientName(ingredient)];
+
+const collectDefinitionErrors = (): string[] => {
+  const errors: string[] = [];
+  const ids = new Set<string>();
+
+  if (productDefinitions.length < MIN_PRODUCT_COUNT) {
+    errors.push(
+      `Expected at least ${MIN_PRODUCT_COUNT} Products, found ${productDefinitions.length}.`,
+    );
+  }
+
+  for (const product of productDefinitions) {
+    if (ids.has(product.id)) {
+      errors.push(`Duplicate Product id: ${product.id}.`);
+    }
+    ids.add(product.id);
+
+    if (!product.name.en.trim() || !product.name.ru.trim()) {
+      errors.push(`${product.id} is missing localized Product names.`);
+    }
+
+    if (!product.description.en.trim() || !product.description.ru.trim()) {
+      errors.push(`${product.id} is missing localized Product descriptions.`);
+    }
+
+    if (
+      product.ingredients.length < MIN_INGREDIENT_CLUE_COUNT ||
+      product.ingredients.length > MAX_INGREDIENT_CLUE_COUNT
+    ) {
+      errors.push(
+        `${product.id} must have ${MIN_INGREDIENT_CLUE_COUNT} to ${MAX_INGREDIENT_CLUE_COUNT} Ingredient Clues.`,
+      );
+    }
+
+    for (const ingredient of product.ingredients) {
+      if (!getMappedIngredientImage(ingredient)) {
+        errors.push(
+          `${product.id} has an unknown Ingredient Clue image: ${ingredient}.`,
+        );
+      }
+    }
+
+    if (!DISPLAY_COLOR_PATTERN.test(product.color)) {
+      errors.push(`${product.id} has an invalid display color: ${product.color}.`);
+    }
+  }
+
+  return errors;
 };
 
-export const hasIngredientImage = (ingredient: string): boolean =>
-  ingredient.toLowerCase().trim() in ingredientImages;
+const throwValidationErrors = (errors: readonly string[]) => {
+  if (errors.length > 0) {
+    throw new Error(`Product catalog validation failed:\n${errors.join('\n')}`);
+  }
+};
+
+const createProductCatalog = (): ProductCatalog => {
+  throwValidationErrors(collectDefinitionErrors());
+
+  const getIngredientImage = (ingredient: string): string => {
+    const imagePath = getMappedIngredientImage(ingredient);
+    if (!imagePath) {
+      throw new Error(`Unknown Ingredient Clue image: ${ingredient}`);
+    }
+    return imagePath;
+  };
+
+  return {
+    products: productDefinitions,
+    getIngredientImage,
+    validateAssets: (assetExists) => {
+      const errors: string[] = [];
+
+      for (const product of productDefinitions) {
+        for (const ingredient of product.ingredients) {
+          const imagePath = getIngredientImage(ingredient);
+          if (!assetExists(imagePath)) {
+            errors.push(
+              `${product.id} Ingredient Clue image is missing: ${ingredient} -> ${imagePath}`,
+            );
+          }
+        }
+      }
+
+      throwValidationErrors(errors);
+    },
+  };
+};
+
+export const productCatalog = createProductCatalog();

@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 
-import { getIngredientImage } from '../../data/products';
+import { productCatalog } from '../../data/products';
 import type { Product } from '../../data/products';
 
-const MAX_INGREDIENT_CLUE_COUNT = 4;
 const MIN_CARD_SIZE = 240;
 const MAX_CARD_SIZE = 384;
 const DRAG_CLICK_TOLERANCE = 6;
@@ -46,10 +45,7 @@ export const IngredientClueCarousel: React.FC<IngredientClueCarouselProps> = ({
   const cardSize = clamp(stageWidth * 0.74, MIN_CARD_SIZE, MAX_CARD_SIZE);
   const cardStride = cardSize * 0.82;
   const settleDuration = prefersReducedMotion ? 120 : 260;
-  const ingredientClueCount = Math.min(
-    product.ingredients.length,
-    MAX_INGREDIENT_CLUE_COUNT,
-  );
+  const ingredientClueCount = product.ingredients.length;
   const allowedMaxCardIndex = guessed
     ? revealedCount - 1
     : Math.min(revealedCount, ingredientClueCount - 1);
@@ -280,7 +276,7 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
   <div className="w-full h-full border-2 border-lush-black rounded-xl p-4 bg-lush-gray-bg flex flex-col justify-around shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all duration-300">
     <div className="w-[80%] aspect-square self-center rounded-lg overflow-hidden border border-lush-gray-border bg-white flex items-center justify-center">
       <img
-        src={getIngredientImage(ingredientName)}
+        src={productCatalog.getIngredientImage(ingredientName)}
         alt={ingredientName}
         draggable={false}
         className="w-full h-full object-cover grayscale contrast-[1.1] select-none pointer-events-none"
