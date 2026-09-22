@@ -33,8 +33,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           onClick={() => onNavigate('play')}
         >
           <picture>
-            <source srcSet="/public/logo.webp" media="(prefers-color-scheme: dark)" />
-            <img src="/public/logo.webp" alt="Lush Guesser Logo" className="h-12 w-12" />
+            <source srcSet="/logo.webp" media="(prefers-color-scheme: dark)" />
+            <img src="/logo.webp" alt="Lush Guesser Logo" className="h-12 w-12" />
           </picture>
         </div>
         
