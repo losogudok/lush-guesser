@@ -16,7 +16,8 @@ wait_for_stack() {
     if [ -S "$socket_path" ] && \
       curl --fail --silent --show-error --unix-socket "$socket_path" http://localhost/ >/dev/null && \
       curl --fail --silent --show-error --unix-socket "$socket_path" \
-        'http://localhost/api/leaderboard?limit=1' >/dev/null; then
+        --output /dev/null --write-out '%{content_type}' \
+        'http://localhost/api/leaderboard?limit=1' | grep -qi '^application/json'; then
       return 0
     fi
     sleep 2

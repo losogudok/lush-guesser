@@ -174,7 +174,8 @@ jobs:
           for _ in {1..30}; do
             if curl --fail --silent --show-error "$DEPLOY_URL/" >/dev/null && \
               curl --fail --silent --show-error \
-                "$DEPLOY_URL/api/leaderboard?limit=1" >/dev/null; then
+                --output /dev/null --write-out '%{content_type}' \
+                "$DEPLOY_URL/api/leaderboard?limit=1" | grep -qi '^application/json'; then
               echo "$DEPLOY_URL is healthy."
               exit 0
             fi
@@ -214,5 +215,6 @@ jobs:
         run: |
           curl --fail --show-error --silent "$DEPLOY_URL/" >/dev/null
           curl --fail --show-error --silent \
-            "$DEPLOY_URL/api/leaderboard?limit=1" >/dev/null
+            --output /dev/null --write-out '%{content_type}' \
+            "$DEPLOY_URL/api/leaderboard?limit=1" | grep -qi '^application/json'
           echo "Rollback is healthy at $DEPLOY_URL."

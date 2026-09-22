@@ -36,7 +36,8 @@ for _ in {1..30}; do
   if [ -S "$socket_path" ] && \
     curl --fail --silent --show-error --unix-socket "$socket_path" http://localhost/ >/dev/null && \
     curl --fail --silent --show-error --unix-socket "$socket_path" \
-      'http://localhost/api/leaderboard?limit=1' >/dev/null; then
+      --output /dev/null --write-out '%{content_type}' \
+      'http://localhost/api/leaderboard?limit=1' | grep -qi '^application/json'; then
     printf '%s\n' "$failed_sha" > .deploy/rolled-back-from
     printf '%s\n' "$previous_sha" > .deploy/deployed-sha
     echo "Rolled back $COMPOSE_PROJECT_NAME from $failed_sha to $previous_sha."
