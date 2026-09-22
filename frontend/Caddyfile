@@ -1,16 +1,18 @@
 :80 {
-    # Host Nginx reaches this container through a per-environment Unix socket.
-    bind unix//run/lush-guesser/frontend.sock|0666
+	# Host Nginx reaches this container through a per-environment Unix socket.
+	bind unix//run/lush-guesser/frontend.sock|0666
 
-    # Set the root directory for static files
-    root * /srv
+	# Set the root directory for static files
+	root * /srv
 
-    # Enable static file server
-    file_server
+	# Keep API routing separate so the SPA fallback cannot rewrite API paths.
+	handle /api/* {
+		reverse_proxy backend:3001
+	}
 
-    # Reverse proxy /api requests to the NestJS backend
-    reverse_proxy /api/* backend:3001
-
-    # Fallback to index.html for Single Page App routing
-    try_files {path} /index.html
+	handle {
+		# Fallback to index.html for Single Page App routing.
+		try_files {path} /index.html
+		file_server
+	}
 }

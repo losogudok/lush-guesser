@@ -10,7 +10,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm ci \
+    --maxsockets=1 \
+    --fetch-retries=3 \
+    --fetch-retry-mintimeout=1000 \
+    --fetch-retry-maxtimeout=10000
 COPY . .
 RUN npm run build
 
