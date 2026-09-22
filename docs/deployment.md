@@ -19,10 +19,12 @@ Both environments run production images. They share one Docker host and are ther
 
 Configure these repository secrets:
 
-- `DEPLOY_HOST`: `192.168.0.9`
+- `DEPLOY_HOST`: `89.250.2.153`, the public address that forwards to `192.168.0.9`
 - `DEPLOY_USER`: `root`
-- `DEPLOY_PORT`: `22`
+- `DEPLOY_PORT`: `56943`, forwarded to port 22 on the server
 - `DEPLOY_SSH_KEY`: the private key authorized for the deployment account; configure this manually and never commit it
+
+GitHub-hosted runners cannot reach the private `192.168.0.9` address directly. Do not replace the public `DEPLOY_HOST` with the LAN address.
 
 Configure these variables on each GitHub Environment:
 
