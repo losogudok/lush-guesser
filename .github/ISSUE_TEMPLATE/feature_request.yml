@@ -1,0 +1,57 @@
+name: 💡 Идея или предложение
+description: Хотите что-то изменить в игре, правилам или добавить новое? Расскажите!
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за идею! Не нужно писать «как это сделать технически» — просто расскажите, что хотите получить и зачем.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: О чём ваша идея?
+      description: Выберите, что ближе всего.
+      options:
+        - Новая механика игры (правила, раунды, подсказки)
+        - Изменение существующих правил
+        - Что-то про продукты / ингредиенты / контент
+        - Что-то про таблицу лидеров
+        - Удобство и внешний вид (интерфейс)
+        - Другое
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую проблему решает идея?
+      description: Что сейчас неудобно, скучно или непонятно? Можно написать «проблемы нет, просто хочется».
+      placeholder: Например — когда все подсказки открыты, угадывать слишком легко.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Как вы это видите?
+      description: Опишите желаемый результат своими словами. Не важно, как это реализовать — важно, что игрок почувствует.
+      placeholder: Например — если открыл все подсказки, очков даётся меньше.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternative
+    attributes:
+      label: Есть ли другие варианты?
+      description: Если думали о других способах решить ту же проблему — напишите здесь.
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Примеры, картинки, ссылки (если есть)
+      description: Скриншоты, наброски, похожие игры — всё поможет понять идею.
+    validations:
+      required: false
