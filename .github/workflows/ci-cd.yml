@@ -6,11 +6,29 @@ on:
       - '**'
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-cd-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  promotion-policy:
+    name: Promotion policy
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Require dev as the production source branch
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_BRANCH" != "dev" ]; then
+            echo "Production changes must be promoted from dev, not $HEAD_BRANCH." >&2
+            exit 1
+          fi
+
   quality:
     name: Test, lint, and build
     runs-on: ubuntu-latest
@@ -89,43 +107,112 @@ jobs:
         run: ./scripts/check-leaderboard-persistence.sh
 
   deploy:
-    name: Deploy production
+    name: Deploy ${{ github.ref_name }}
     runs-on: ubuntu-latest
     needs: production-build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'development' }}
 
     steps:
+      - name: Report disabled deployment
+        if: vars.DEPLOY_ENABLED != 'true'
+        run: >-
+          echo "Deployment to ${{ github.ref_name }} is disabled until DNS, TLS, and host
+          provisioning are verified."
+
       - name: Deploy over SSH
+        id: deploy
+        if: vars.DEPLOY_ENABLED == 'true'
         uses: appleboy/ssh-action@v1.2.2
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          REPOSITORY_URL: https://github.com/${{ github.repository }}.git
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME }}
+          FRONTEND_SOCKET_DIR: ${{ vars.FRONTEND_SOCKET_DIR }}
+          LEADERBOARD_VOLUME_NAME: ${{ vars.LEADERBOARD_VOLUME_NAME }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
           script_stop: true
-          envs: GITHUB_SHA,DEPLOY_PATH
+          command_timeout: 45m
+          envs: GITHUB_SHA,REPOSITORY_URL,DEPLOY_PATH,COMPOSE_PROJECT_NAME,FRONTEND_SOCKET_DIR,LEADERBOARD_VOLUME_NAME
           script: |
-            cd "$DEPLOY_PATH"
-            migration_started=0
-            restart_backend_on_failure() {
-              status=$?
-              if [ "$status" -ne 0 ] && [ "$migration_started" -eq 1 ]; then
-                docker compose up -d backend || true
-              fi
-              exit "$status"
-            }
-            trap restart_backend_on_failure EXIT
-            volume_name="lush-guesser-leaderboard-data"
-            docker volume create "$volume_name" >/dev/null
-            if [ -f data/database.sqlite ] && ! docker run --rm -v "$volume_name:/target" alpine:3.21 test -f /target/database.sqlite; then
-              migration_started=1
-              docker compose stop backend
-              docker run --rm -v "$PWD/data/database.sqlite:/source/database.sqlite:ro" -v "$volume_name:/target" alpine:3.21 cp /source/database.sqlite /target/database.sqlite
+            set -Eeuo pipefail
+            exec 9>/run/lock/lush-guesser-deploy.lock
+            flock -w 2700 9
+
+            if [ ! -d "$DEPLOY_PATH/.git" ]; then
+              install -d -m 0755 "$(dirname "$DEPLOY_PATH")"
+              git clone --no-checkout "$REPOSITORY_URL" "$DEPLOY_PATH"
             fi
+
+            cd "$DEPLOY_PATH"
+            install -d -m 0755 .deploy
+            if [ -s .deploy/deployed-sha ]; then
+              cp .deploy/deployed-sha .deploy/previous-sha
+            else
+              rm -f .deploy/previous-sha
+            fi
+
             git fetch --prune origin
             git checkout --force "$GITHUB_SHA"
             git reset --hard "$GITHUB_SHA"
-            docker compose up -d --build --remove-orphans
-            migration_started=0
+            ./scripts/deploy-environment.sh
+
+      - name: Verify public frontend and API
+        id: public-health
+        if: vars.DEPLOY_ENABLED == 'true' && steps.deploy.conclusion == 'success'
         env:
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+        run: |
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error "$DEPLOY_URL/" >/dev/null && \
+              curl --fail --silent --show-error \
+                "$DEPLOY_URL/api/leaderboard?limit=1" >/dev/null; then
+              echo "$DEPLOY_URL is healthy."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "$DEPLOY_URL did not become healthy." >&2
+          exit 1
+
+      - name: Roll back failed deployment
+        id: rollback
+        if: failure() && vars.DEPLOY_ENABLED == 'true'
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME }}
+          FRONTEND_SOCKET_DIR: ${{ vars.FRONTEND_SOCKET_DIR }}
+          LEADERBOARD_VOLUME_NAME: ${{ vars.LEADERBOARD_VOLUME_NAME }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          script_stop: true
+          command_timeout: 45m
+          envs: DEPLOY_PATH,COMPOSE_PROJECT_NAME,FRONTEND_SOCKET_DIR,LEADERBOARD_VOLUME_NAME
+          script: |
+            set -Eeuo pipefail
+            exec 9>/run/lock/lush-guesser-deploy.lock
+            flock -w 2700 9
+            cd "$DEPLOY_PATH"
+            ./scripts/rollback-environment.sh
+
+      - name: Verify rollback publicly
+        if: failure() && steps.rollback.conclusion == 'success'
+        env:
+          DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+        run: |
+          curl --fail --show-error --silent "$DEPLOY_URL/" >/dev/null
+          curl --fail --show-error --silent \
+            "$DEPLOY_URL/api/leaderboard?limit=1" >/dev/null
+          echo "Rollback is healthy at $DEPLOY_URL."

@@ -3,25 +3,37 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: ${BACKEND_CONTAINER_NAME:-lush-guesser-backend}
-    ports:
-      - "${BACKEND_HOST_PORT:-3001}:3001"
     environment:
       - DATABASE_PATH=/app/data/database.sqlite
       - NODE_ENV=production
     volumes:
       - leaderboard_data:/app/data
     restart: always
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          require('http').get('http://127.0.0.1:3001/api/leaderboard?limit=1',
+          (res) => process.exit(res.statusCode === 200 ? 0 : 1))
+          .on('error', () => process.exit(1));
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: lush-guesser-frontend
-    ports:
-      - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ${FRONTEND_SOCKET_DIR:-/tmp/lush-guesser}
+        target: /run/lush-guesser
     restart: always
 
 volumes:

@@ -1,0 +1,4 @@
+services:
+  nginx:
+    volumes:
+      - /run/lush-guesser:/run/lush-guesser:ro

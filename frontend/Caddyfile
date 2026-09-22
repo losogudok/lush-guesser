@@ -1,4 +1,7 @@
 :80 {
+    # Host Nginx reaches this container through a per-environment Unix socket.
+    bind unix//run/lush-guesser/frontend.sock|0666
+
     # Set the root directory for static files
     root * /srv
 
