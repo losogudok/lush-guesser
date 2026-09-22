@@ -3,14 +3,14 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: lush-guesser-backend
+    container_name: ${BACKEND_CONTAINER_NAME:-lush-guesser-backend}
     ports:
-      - "3001:3001"
+      - "${BACKEND_HOST_PORT:-3001}:3001"
     environment:
       - DATABASE_PATH=/app/data/database.sqlite
       - NODE_ENV=production
     volumes:
-      - ./data:/app/data
+      - leaderboard_data:/app/data
     restart: always
 
   frontend:
@@ -25,4 +25,5 @@ services:
     restart: always
 
 volumes:
-  data:
+  leaderboard_data:
+    name: ${LEADERBOARD_VOLUME_NAME:-lush-guesser-leaderboard-data}

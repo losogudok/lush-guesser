@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { products } from '../data/products';
+import { productCatalog } from '../data/products';
 import type { Product } from '../data/products';
 import { Star, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -10,15 +10,13 @@ import { IngredientClueCarousel } from './game/IngredientClueCarousel';
 import { RoundResult } from './game/RoundResult';
 import { GAME_ROUND_COUNT } from '../constants';
 
-const MAX_INGREDIENT_CLUE_COUNT = 4;
-
 interface GameScreenProps {
   onGameFinished: (finalScore: number, correctCount: number) => void;
   onQuit: () => void;
 }
 
 const createOptions = (product: Product) => {
-  const distractors = products
+  const distractors = productCatalog.products
     .filter((p) => p.id !== product.id)
     .sort(() => 0.5 - Math.random())
     .slice(0, 3)
@@ -36,8 +34,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({
 
   // Game Setup States
   const [playlist] = useState<Product[]>(() => {
-    const shuffled = [...products].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, Math.min(GAME_ROUND_COUNT, products.length));
+    const shuffled = [...productCatalog.products].sort(() => 0.5 - Math.random());
+    return shuffled.slice(
+      0,
+      Math.min(GAME_ROUND_COUNT, productCatalog.products.length),
+    );
   });
   const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
   const [totalScore, setTotalScore] = useState(0);
@@ -62,12 +63,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const activeWorth = guessed && !guessCorrect ? 0 : currentWorth;
 
   const handleRevealNext = () => {
-    const maxRevealCount = Math.min(
-      currentProduct.ingredients.length,
-      MAX_INGREDIENT_CLUE_COUNT,
-    );
-
-    if (revealedCount < maxRevealCount && !guessed) {
+    if (revealedCount < currentProduct.ingredients.length && !guessed) {
       setRevealedCount((prev) => prev + 1);
     }
   };
@@ -115,7 +111,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
 
   // Helper to fetch localized product name by ID
   const getProductName = (id: string) => {
-    const prod = products.find((p) => p.id === id);
+    const prod = productCatalog.products.find((p) => p.id === id);
     return prod ? prod.name[currentLang] : id;
   };
 
