@@ -29,3 +29,6 @@ dist-ssr
 # SQLite database files
 *.sqlite
 data/
+
+# Runtime deployment state
+.deploy/
