@@ -4,6 +4,8 @@ set -Eeuo pipefail
 
 project_name="lush-guesser-persistence-${GITHUB_RUN_ID:-local}-$$"
 export COMPOSE_PROJECT_NAME="$project_name"
+export BACKEND_CONTAINER_NAME="${project_name}-backend"
+export BACKEND_HOST_PORT=0
 export LEADERBOARD_VOLUME_NAME="${project_name}-data"
 
 cleanup() {
@@ -12,8 +14,8 @@ cleanup() {
 trap cleanup EXIT
 
 wait_for_backend() {
-  local _
-  for _ in {1..30}; do
+  local attempt
+  for attempt in {1..30}; do
     if docker compose exec -T backend node -e '
       fetch("http://127.0.0.1:3001/api/leaderboard?limit=1")
         .then((response) => process.exit(response.ok ? 0 : 1))

@@ -1,0 +1,77 @@
+name: 🐛 Что-то работает не так
+description: Игра ведёт себя не так, как вы ожидали. Никаких технических знаний не нужно.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо, что сообщаете! Заполните простыми словами — вы не обязаны понимать, почему так произошло.
+        Чем конкретнее пример ("нажала кнопку X, увидела Y, а ожидала Z"), тем быстрее починим.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Что произошло?
+      description: Опишите своими словами, что случилось.
+      placeholder: Например — в конце игры счёт показал 0, хотя я угадала 7 продуктов.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: А что должно было произойти?
+      description: Как вы считаете, как правильно?
+      placeholder: Например — счёт должен быть 7, потому что я угадала 7 из 10.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как это повторить?
+      description: По шагам, как в рецепте. Каждый шаг — отдельное действие.
+      placeholder: |
+        1. Открыл игру
+        2. Начал новую игру
+        3. В третьем раунде открыл все подсказки
+        4. Увидел то, что описал выше
+    validations:
+      required: true
+
+  - type: dropdown
+    id: when
+    attributes:
+      label: Как часто это происходит?
+      options:
+        - Каждый раз
+        - Иногда
+        - Был один раз
+        - Не знаю
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Скриншот или запись экрана (если есть)
+      description: Картинка стоит тысячи слов. Перетащите файл прямо в это поле.
+    validations:
+      required: false
+
+  - type: textarea
+    id: where
+    attributes:
+      label: Где и на чём вы играли?
+      description: Просто опишите — телефон или компьютер, какой браузер или приложение.
+      placeholder: Например — телефон, Safari, iPhone
+    validations:
+      required: false
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Что-нибудь ещё?
+      description: Любые детали, которые кажутся вам важными.
+    validations:
+      required: false

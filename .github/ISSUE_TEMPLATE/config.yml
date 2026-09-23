@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Вопрос или идея (не баг и не фича)
+    url: https://github.com/losogudok/lush-guesser/discussions
+    label: Задать вопрос
+    about: Если сомневаетесь, куда попадает ваша мысль — напишите здесь
