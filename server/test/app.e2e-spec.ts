@@ -12,6 +12,9 @@ describe('AppController (e2e)', () => {
   let tempDir: string;
 
   beforeEach(async () => {
+    process.env.TELEGRAM_BOT_TOKEN = 'test-bot-token';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-webhook-secret';
+    process.env.TELEGRAM_MINI_APP_URL = 'https://lush.example.test/';
     tempDir = mkdtempSync(join(tmpdir(), 'lush-guesser-e2e-'));
     process.env.DATABASE_PATH = join(tempDir, 'database.sqlite');
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -77,8 +80,73 @@ describe('AppController (e2e)', () => {
     expect(body.name).toBe('This Name Is Longer');
   });
 
+  it('/webhook rejects updates without the configured Telegram secret', async () => {
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .send({ inline_query: { id: 'query-1' } })
+      .expect(401);
+  });
+
+  it('/webhook rejects malformed inline queries', async () => {
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .set('x-telegram-bot-api-secret-token', 'test-webhook-secret')
+      .send({ inline_query: 'invalid' })
+      .expect(400);
+  });
+
+  it('/webhook answers inline queries with a Mini App launch button', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true, result: true }),
+    } as Response);
+
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .set('x-telegram-bot-api-secret-token', 'test-webhook-secret')
+      .send({ inline_query: { id: 'query-1', query: '' } })
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://api.telegram.org/bottest-bot-token/answerInlineQuery',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const requestBody = JSON.parse(
+      fetchSpy.mock.calls[0][1]?.body as string,
+    ) as Record<string, unknown>;
+    expect(requestBody).toMatchObject({
+      inline_query_id: 'query-1',
+      results: [],
+      button: {
+        text: 'Play Lush Scent Guesser',
+        web_app: { url: 'https://lush.example.test/' },
+      },
+    });
+
+    fetchSpy.mockRestore();
+  });
+
+  it('/webhook acknowledges unrelated Telegram updates without posting to chat', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
+
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .set('x-telegram-bot-api-secret-token', 'test-webhook-secret')
+      .send({ message: { text: 'hello' } })
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
   afterEach(async () => {
     await app.close();
+    jest.restoreAllMocks();
     rmSync(tempDir, { recursive: true, force: true });
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    delete process.env.TELEGRAM_MINI_APP_URL;
   });
 });

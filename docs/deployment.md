@@ -11,7 +11,7 @@ GitHub Actions deploys `dev` to development and `main` to production after the q
 | Frontend socket directory | `/run/lush-guesser/dev` | `/run/lush-guesser/prod` |
 | Leaderboard volume | `lush-guesser-dev-data` | `lush-guesser-prod-data` |
 
-Both environments run production images on the same Docker host. Host Nginx terminates HTTPS and proxies to the environment-specific frontend Unix socket.
+Both environments run production images on the same Docker host. Host Nginx at `192.168.0.9` terminates HTTPS and proxies to the environment-specific frontend Unix socket. The frontend Nginx container serves the built app on that socket and proxies `/api` and `/webhook` to the backend service.
 
 ## GitHub configuration
 
@@ -40,3 +40,15 @@ Production deployment must remain disabled until Nginx, certificates, socket dir
 Install `deploy/tmpfiles.d/lush-guesser.conf` as a tmpfiles rule, mount `/run/lush-guesser` into the Nginx container using `deploy/nginx/docker-compose.override.yml`, and install `deploy/nginx/lush-guesser.conf` in the host Nginx configuration. Validate the Nginx configuration before recreating the proxy.
 
 The deployment scripts preserve the Leaderboard Entry volume and migrate a legacy `data/database.sqlite` file only when the target volume has no database.
+
+## Telegram inline mode
+
+The backend accepts Telegram updates at `/webhook`. Set these variables in a deployment-owned `.env` file beside the Compose file; keep that file out of version control and restrict it to the deployment account:
+
+| Variable | Purpose |
+| --- | --- |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot API credential used to answer inline queries |
+| `TELEGRAM_WEBHOOK_SECRET` | Shared secret checked against Telegram's `X-Telegram-Bot-Api-Secret-Token` header |
+| `TELEGRAM_MINI_APP_URL` | Public HTTPS URL opened by the inline Mini App button |
+
+The webhook fails closed when its secret is absent or invalid. Inline queries are answered with a Mini App button and no chat message is sent. Leave the Telegram variables unset to keep the integration inactive. Configure Telegram to send `inline_query` updates to `https://lush.lookmaimanengineer.cc/webhook` with the matching webhook secret.

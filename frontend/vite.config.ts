@@ -14,6 +14,10 @@ export default defineConfig({
         target: process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/webhook': {
+        target: process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
 })

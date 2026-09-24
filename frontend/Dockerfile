@@ -10,9 +10,9 @@ RUN npm ci \
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve with Caddy
-FROM caddy:alpine
+# Stage 2: Serve through the Unix socket consumed by the host Nginx proxy.
+FROM nginx:alpine
 COPY --from=builder /app/dist /srv
-COPY Caddyfile /etc/caddy/Caddyfile
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+CMD ["sh", "-c", "umask 000 && exec nginx -g 'daemon off;'"]

@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { LeaderboardEntry } from './leaderboard/leaderboard.entity';
 import { CreateLeaderboard1710000000000 } from './migrations/1710000000000-CreateLeaderboard';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { CreateLeaderboard1710000000000 } from './migrations/1710000000000-Creat
       },
     }),
     LeaderboardModule,
+    TelegramModule,
   ],
 })
 export class AppModule {}

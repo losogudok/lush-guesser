@@ -6,6 +6,9 @@ services:
     environment:
       - DATABASE_PATH=/app/data/database.sqlite
       - NODE_ENV=production
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET:-}
+      - TELEGRAM_MINI_APP_URL=${TELEGRAM_MINI_APP_URL:-}
     volumes:
       - leaderboard_data:/app/data
     restart: always
