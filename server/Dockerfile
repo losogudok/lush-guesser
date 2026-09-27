@@ -30,6 +30,9 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
+# Bundled starter ingredient images for the catalog seed script
+COPY --from=builder /app/assets ./assets
+
 # Create database volume directory
 RUN mkdir -p /app/data
 ENV PORT=3001
