@@ -45,7 +45,7 @@ The deployment scripts preserve the Leaderboard Entry volume and migrate a legac
 
 The settings below describe the approved target configuration. The backend supports `TELEGRAM_BOT_PROXY_URL`; runtime support for `TELEGRAM_WEBHOOK_ENABLED` is not implemented yet, so update delivery continues to follow [ADR-0005](adr/0005-select-telegram-update-delivery-at-startup.md).
 
-After implementation, set these values in a deployment-owned `.env` file beside the Compose file; keep that file out of version control and restrict it to the deployment account.
+After implementation, set these values in a deployment-owned `.env` file beside the Compose file; keep that file out of version control and restrict it to the deployment account. Include the environment's `COMPOSE_PROJECT_NAME` from the table above. GitHub Actions supplies it during deployment, while the `.env` value lets interactive `docker compose` commands target the same project without `-p`:
 
 | Variable | Purpose |
 | --- | --- |

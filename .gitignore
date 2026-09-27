@@ -33,4 +33,7 @@ data/
 # Runtime deployment state
 .deploy/
 .env
-.evn.dev
+.env.*
+!.env.example
+# throwaway manual test scripts (contain credentials)
+server/test.js
