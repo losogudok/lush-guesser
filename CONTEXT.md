@@ -16,9 +16,17 @@ _Avoid_: Match, run
 One product-guessing challenge inside a game session.
 _Avoid_: Question, level
 
+**Ingredient**:
+A named game ingredient that may carry an image. An Ingredient Clue can be shown with or without an image.
+_Avoid_: Hint, note, smell
+
 **Ingredient Clue**:
 A revealed ingredient card that helps the player identify the product.
 _Avoid_: Hint, tile
+
+**Ingredient Catalog**:
+The curatable collection of all Ingredients and Products an admin maintains through the admin panel.
+_Avoid_: Content database
 
 **Product**:
 The answer the player is trying to identify in a round.
