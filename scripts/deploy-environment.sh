@@ -49,7 +49,7 @@ docker compose config --quiet
 docker compose build
 docker compose stop frontend >/dev/null 2>&1 || true
 rm -f "$socket_path"
-docker compose up -d --remove-orphans
+./scripts/compose-up-with-diagnostics.sh
 wait_for_stack
 
 git rev-parse HEAD > .deploy/deployed-sha

@@ -30,7 +30,7 @@ docker compose config --quiet
 docker compose build
 docker compose stop frontend >/dev/null 2>&1 || true
 rm -f "$socket_path"
-docker compose up -d --remove-orphans
+./scripts/compose-up-with-diagnostics.sh
 
 for _ in {1..30}; do
   if [ -S "$socket_path" ] && \
