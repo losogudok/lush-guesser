@@ -43,14 +43,18 @@ The deployment scripts preserve the Leaderboard Entry volume and migrate a legac
 
 ## Telegram inline mode
 
-The backend accepts Telegram updates at `/webhook`. Set these variables in a deployment-owned `.env` file beside the Compose file; keep that file out of version control and restrict it to the deployment account:
+The settings below describe the approved target configuration. The runtime changes are not implemented yet; until they are delivered, the backend continues to use the startup behavior in [ADR-0005](adr/0005-select-telegram-update-delivery-at-startup.md) and does not recognize `TELEGRAM_WEBHOOK_ENABLED` or `TELEGRAM_BOT_PROXY_URL`.
+
+After implementation, set these values in a deployment-owned `.env` file beside the Compose file; keep that file out of version control and restrict it to the deployment account.
 
 | Variable | Purpose |
 | --- | --- |
-| `TELEGRAM_BOT_TOKEN` | Telegram Bot API credential used to answer inline queries |
-| `TELEGRAM_WEBHOOK_SECRET` | Shared secret checked against Telegram's `X-Telegram-Bot-Api-Secret-Token` header |
-| `TELEGRAM_MINI_APP_URL` | Public HTTPS URL opened by the inline Mini App button |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot API credential; use a distinct bot token in development and production |
+| `TELEGRAM_WEBHOOK_ENABLED` | Required explicit `true` or `false` when the bot token is set. Use `false` in both environments for the current deployment target |
+| `TELEGRAM_WEBHOOK_SECRET` | Required when webhook mode is enabled; checked against Telegram's `X-Telegram-Bot-Api-Secret-Token` header |
+| `TELEGRAM_MINI_APP_URL` | Public HTTPS URL opened by the inline Mini App button and used to derive `/webhook` |
+| `TELEGRAM_BOT_PROXY_URL` | Optional SOCKS5 URL for outbound Telegram Bot API requests, such as `socks5://<username>:<password>@<host>:1080`. If unset, requests connect directly |
 
-The webhook fails closed when its secret is absent or invalid. Inline queries are answered with a Mini App button and no chat message is sent. Leave the Telegram variables unset to keep the integration inactive. Configure Telegram to send `inline_query` updates to `https://lush.lookmaimanengineer.cc/webhook` with the matching webhook secret.
+When `TELEGRAM_WEBHOOK_ENABLED=false`, startup deletes the webhook without dropping pending updates, then starts long polling for `inline_query`. When it is `true`, startup registers `/webhook` on the origin of `TELEGRAM_MINI_APP_URL` with Telegram and uses webhook delivery; the webhook fails closed when its secret is absent or invalid. Inline queries are answered with a Mini App button and no chat message is sent. `getUpdates` polling and webhook delivery cannot be active for the same bot token at once. Run at most one backend poller per token, and use separate bot tokens for development and production.
 
-When `TELEGRAM_BOT_TOKEN` is set, startup waits for Telegram's `getWebhookInfo` response and selects the update-delivery mode. If Telegram has no webhook URL, the backend starts long polling with `getUpdates` for `inline_query`; run only one backend instance per bot token in this mode. If the webhook URL matches `/webhook` on the Mini App URL's origin, the backend uses webhook mode and requires `TELEGRAM_WEBHOOK_SECRET`. A nonempty mismatched URL, a failed status request, or a configured webhook without `inline_query` prevents startup; the backend does not change Telegram's webhook configuration. Delivery and synchronization errors, and malformed `allowed_updates`, are logged as warnings. If `allowed_updates` is omitted or empty, Telegram's default includes `inline_query`. Telegram does not return the configured secret, so a matching secret is confirmed only when a webhook update is successfully accepted.
+When `TELEGRAM_BOT_PROXY_URL` is set, route outbound Bot API requests—including webhook registration/deletion, polling, and inline-query answers—through that SOCKS5 proxy. The proxy must be reachable from the backend container. The proxy URL may omit its port when the server listens on the SOCKS default port `1080`; URL-encode reserved characters in credentials. The proxy affects server-to-Telegram requests only; Telegram's incoming webhook requests and players' Telegram connectivity do not use it.
