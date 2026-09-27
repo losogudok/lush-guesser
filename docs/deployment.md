@@ -43,7 +43,7 @@ The deployment scripts preserve the Leaderboard Entry volume and migrate a legac
 
 ## Telegram inline mode
 
-The settings below describe the approved target configuration. The runtime changes are not implemented yet; until they are delivered, the backend continues to use the startup behavior in [ADR-0005](adr/0005-select-telegram-update-delivery-at-startup.md) and does not recognize `TELEGRAM_WEBHOOK_ENABLED` or `TELEGRAM_BOT_PROXY_URL`.
+The settings below describe the approved target configuration. The backend supports `TELEGRAM_BOT_PROXY_URL`; runtime support for `TELEGRAM_WEBHOOK_ENABLED` is not implemented yet, so update delivery continues to follow [ADR-0005](adr/0005-select-telegram-update-delivery-at-startup.md).
 
 After implementation, set these values in a deployment-owned `.env` file beside the Compose file; keep that file out of version control and restrict it to the deployment account.
 

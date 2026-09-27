@@ -1,18 +1,28 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { EventEmitter } from 'node:events';
 import { mkdtempSync, rmSync } from 'node:fs';
+import type { ClientRequest, IncomingMessage } from 'node:http';
+import * as https from 'node:https';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { TelegramBotApiClient } from './../src/telegram/telegram-bot-api.client';
+
+jest.mock('node:https', () => {
+  const actual = jest.requireActual<typeof import('node:https')>('node:https');
+  return { ...actual, request: jest.fn() };
+});
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let tempDir: string;
 
   beforeEach(async () => {
+    jest.mocked(https.request).mockReset();
     process.env.TELEGRAM_BOT_TOKEN = 'test-bot-token';
     process.env.TELEGRAM_WEBHOOK_SECRET = 'test-webhook-secret';
     process.env.TELEGRAM_MINI_APP_URL = 'https://lush.example.test/';
@@ -115,10 +125,31 @@ describe('AppController (e2e)', () => {
   });
 
   it('/webhook answers inline queries with a Mini App launch button', async () => {
-    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ok: true, result: true }),
-    } as Response);
+    const requestMock = jest.mocked(https.request);
+    let requestBody = '';
+    requestMock.mockImplementation((url, options, callback) => {
+      expect(url).toBe(
+        'https://api.telegram.org/bottest-bot-token/answerInlineQuery',
+      );
+      expect(options?.method).toBe('POST');
+      const outgoingRequest = new EventEmitter() as ClientRequest;
+      outgoingRequest.write = jest.fn((chunk: string | Uint8Array) => {
+        requestBody = Buffer.from(chunk).toString();
+        return true;
+      });
+      outgoingRequest.end = jest.fn(() => {
+        const response = Readable.from([
+          JSON.stringify({ ok: true, result: true }),
+        ]);
+        Object.assign(response, {
+          statusCode: 200,
+          statusMessage: 'OK',
+          headers: { 'content-type': 'application/json' },
+        });
+        callback?.(response as IncomingMessage);
+      });
+      return outgoingRequest;
+    });
 
     await request(app.getHttpServer())
       .post('/webhook')
@@ -127,14 +158,12 @@ describe('AppController (e2e)', () => {
       .expect(200)
       .expect({ ok: true });
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      'https://api.telegram.org/bottest-bot-token/answerInlineQuery',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    const requestBody = JSON.parse(
-      fetchSpy.mock.calls[0][1]?.body as string,
-    ) as Record<string, unknown>;
-    expect(requestBody).toMatchObject({
+    expect(requestMock).toHaveBeenCalledTimes(1);
+    const parsedRequestBody = JSON.parse(requestBody) as Record<
+      string,
+      unknown
+    >;
+    expect(parsedRequestBody).toMatchObject({
       inline_query_id: 'query-1',
       results: [],
       button: {
@@ -142,12 +171,10 @@ describe('AppController (e2e)', () => {
         web_app: { url: 'https://lush.example.test/' },
       },
     });
-
-    fetchSpy.mockRestore();
   });
 
   it('/webhook acknowledges unrelated Telegram updates without posting to chat', async () => {
-    const fetchSpy = jest.spyOn(global, 'fetch');
+    const requestMock = jest.mocked(https.request);
 
     await request(app.getHttpServer())
       .post('/webhook')
@@ -156,8 +183,7 @@ describe('AppController (e2e)', () => {
       .expect(200)
       .expect({ ok: true });
 
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(requestMock).not.toHaveBeenCalled();
   });
 
   afterEach(async () => {

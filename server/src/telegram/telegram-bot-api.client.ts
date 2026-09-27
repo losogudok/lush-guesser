@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as https from 'node:https';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 
 export interface TelegramInlineQueryAnswer {
   inline_query_id: string;
@@ -50,9 +52,44 @@ export class TelegramBotApiClient {
     method: string,
     options: RequestInit = {},
   ): Promise<Response> {
-    return fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
-      ...options,
-      signal: options.signal ?? AbortSignal.timeout(5000),
+    const proxyUrl = process.env.TELEGRAM_BOT_PROXY_URL;
+    const agent = proxyUrl
+      ? (new SocksProxyAgent(proxyUrl) as unknown as https.Agent)
+      : undefined;
+    const headers = Object.fromEntries(new Headers(options.headers).entries());
+
+    return new Promise<Response>((resolve, reject) => {
+      const request = https.request(
+        `https://api.telegram.org/bot${botToken}/${method}`,
+        {
+          method: options.method ?? 'GET',
+          headers,
+          ...(agent ? { agent } : {}),
+          signal: options.signal ?? AbortSignal.timeout(5000),
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+          response.on('data', (chunk: Buffer | string) => {
+            chunks.push(Buffer.from(chunk));
+          });
+          response.on('error', reject);
+          response.on('end', () => {
+            resolve(
+              new Response(Buffer.concat(chunks), {
+                status: response.statusCode ?? 502,
+                statusText: response.statusMessage,
+                headers: new Headers(response.headers as HeadersInit),
+              }),
+            );
+          });
+        },
+      );
+
+      request.on('error', reject);
+      if (options.body !== undefined) {
+        request.write(options.body as string | Uint8Array);
+      }
+      request.end();
     });
   }
 }
