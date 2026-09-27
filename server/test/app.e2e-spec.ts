@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { TelegramBotApiClient } from './../src/telegram/telegram-bot-api.client';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -17,9 +18,27 @@ describe('AppController (e2e)', () => {
     process.env.TELEGRAM_MINI_APP_URL = 'https://lush.example.test/';
     tempDir = mkdtempSync(join(tmpdir(), 'lush-guesser-e2e-'));
     process.env.DATABASE_PATH = join(tempDir, 'database.sqlite');
+    const telegramApi = new TelegramBotApiClient();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(TelegramBotApiClient)
+      .useValue({
+        getWebhookInfo: jest.fn().mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ok: true,
+              result: {
+                url: 'https://lush.example.test/webhook',
+                allowed_updates: ['inline_query'],
+                pending_update_count: 0,
+              },
+            }),
+        }),
+        answerInlineQuery: telegramApi.answerInlineQuery.bind(telegramApi),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
