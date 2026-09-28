@@ -54,7 +54,7 @@ const main = async (): Promise<void> => {
   const databasePath = resolveDatabasePath();
   console.log(`[seed] Connecting to the database at ${databasePath}…`);
   const dataSource = new DataSource({
-    type: 'sqlite',
+    type: 'better-sqlite3',
     database: databasePath,
     entities: [...DATABASE_ENTITIES],
     migrations: [...DATABASE_MIGRATIONS],

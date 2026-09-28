@@ -30,7 +30,7 @@ export const buildTypeOrmOptions = (): TypeOrmModuleOptions => {
   const isProduction = process.env.NODE_ENV === 'production';
 
   return {
-    type: 'sqlite',
+    type: 'better-sqlite3',
     database: resolveDatabasePath(),
     entities: [...DATABASE_ENTITIES],
     migrations: [...DATABASE_MIGRATIONS],

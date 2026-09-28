@@ -24,7 +24,7 @@ describe('CatalogSeeder against a real database', () => {
 
   beforeAll(async () => {
     dataSource = new DataSource({
-      type: 'sqlite',
+      type: 'better-sqlite3',
       database: ':memory:',
       entities: [Product, Ingredient, ProductIngredientClue],
       synchronize: true,
