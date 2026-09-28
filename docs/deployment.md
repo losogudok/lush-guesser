@@ -66,3 +66,31 @@ When `TELEGRAM_BOT_PROXY_URL` is set, route outbound Bot API requests—includin
 | `ADMIN_PASSWORD` | Shared admin secret required to write catalog data. `POST /api/catalog/products` accepts it in the `x-admin-password` request header; the endpoint fails closed with 401 when the variable is unset or empty |
 
 Until proper admin authentication ships (#20), Product creation is guarded by this shared secret. Every deployment must set a distinct, non-empty value; catalog `GET` endpoints stay public and read-only.
+
+## Leaderboard backup and restore
+
+Leaderboard Entries live in `database.sqlite` inside the environment's Leaderboard volume (`/app/data` in the backend container). The backend image ships two operator commands, safe against a live app and against failed runs:
+
+- `node dist/ops/backup.js <output-file-or-directory>` — consistent snapshot via the SQLite Online Backup API, safe to run while the backend is serving traffic. An existing directory receives a `leaderboard-<YYYYMMDD-HHMMSS>.sqlite` file; an explicit file path must not already exist, so a rerun never clobbers a prior snapshot. A failed backup never mutates the source and exits non-zero.
+- `node dist/ops/restore.js <snapshot-file> --to <target-db> [--force]` — validates the snapshot (`PRAGMA integrity_check`) before touching anything, writes to a staging file beside the target and atomically renames it into place, and refuses to overwrite an existing target without `--force`. A failed restore leaves the previous database and the snapshot untouched and exits non-zero.
+
+Run the commands inside the backend container over the SSH seam:
+
+```sh
+# Backup (safe while the backend is live)
+cd /opt/lush-guesser/<dev|prod>
+docker compose exec backend node dist/ops/backup.js /app/data
+docker compose cp "backend:/app/data/leaderboard-<timestamp>.sqlite" /somewhere/outside/the/release-tree/
+
+# Restore (stop the backend first so nothing writes mid-replace)
+docker compose stop backend
+docker compose cp snapshot.sqlite "backend:/app/data/restore-in.sqlite"
+docker compose run --rm backend node dist/ops/restore.js \
+  /app/data/restore-in.sqlite --to /app/data/database.sqlite --force
+docker compose start backend
+curl -fsS "https://lush-<dev|prod>.lookmaimanengineer.cc/api/leaderboard?limit=20"
+```
+
+Keep snapshots in deployment-owned storage outside the release tree (checkout, image, and Git state can all be replaced at will). Restores require an explicit `--to` target; `--force` is the only path that replaces an existing database file.
+
+`scripts/check-backup-restore.sh` proves the full round trip repeatably in a throwaway deployment: representative entries (distinct scores, a score tie with distinct creation timestamps, a repeated name), backup, volume wipe, clean deploy, restore, and byte-exact Leaderboard comparison through the API — including ranking order. Run it before relying on a backup or after changing storage code.
