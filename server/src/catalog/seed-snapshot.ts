@@ -64,12 +64,12 @@ export const catalogSeedSnapshot: CatalogSeedSnapshot = {
         ru: 'Love',
       },
       description: {
-        en: "One spritz of this sweet scent and all of a sudden you're in a rom-com of your own making. Flirty rose swirls with crisp lemongrass and bergamot to create a sweet, tart take on a delicious caramel apple scent. Cover yourself in this alluring perfume and get ready to fall head over heels.",
-        ru: 'Забудьте о любовных зельях — этот опьяняющий аромат сам станет вашим союзником в привлечении поклонников. Сначала воздух наполняет напористый лемонграсс, сквозь который просвечивает солнечный бергамот. Затем головокружительный иланг-иланг добавляет сладкое послевкусие, которое сводит с ума.',
+        en: 'A bright opening of lemongrass leads to red apple, rose and warm cinnamon.',
+        ru: 'Яркий лемонграсс сменяется красным яблоком, розой и тёплой корицей.',
       },
       color: '#EC407A',
       inGame: true,
-      clues: ['lemongrass', 'bergamot', 'ylang-ylang', 'rose'],
+      clues: ['lemongrass', 'red-apple', 'rose', 'cinnamon'],
     },
     {
       slug: 'karma',
@@ -83,7 +83,7 @@ export const catalogSeedSnapshot: CatalogSeedSnapshot = {
       },
       color: '#FF6F00',
       inGame: true,
-      clues: ['patchouli', 'sweet-orange', 'lemongrass', 'pine'],
+      clues: ['sweet-orange', 'patchouli', 'pine', 'lemongrass'],
     },
     {
       slug: 'rose-jam',
@@ -97,7 +97,7 @@ export const catalogSeedSnapshot: CatalogSeedSnapshot = {
       },
       color: '#E91E63',
       inGame: true,
-      clues: ['rose', 'geranium'],
+      clues: ['rose', 'lemon', 'geranium'],
     },
     {
       slug: 'twilight',
@@ -125,7 +125,7 @@ export const catalogSeedSnapshot: CatalogSeedSnapshot = {
       },
       color: '#00ACC1',
       inGame: true,
-      clues: ['mint', 'tarragon', 'sandalwood', 'lavender'],
+      clues: ['mint', 'tarragon', 'thyme', 'lavender'],
     },
     {
       slug: 'lord-of-misrule',
@@ -148,26 +148,12 @@ export const catalogSeedSnapshot: CatalogSeedSnapshot = {
         ru: 'The Comforter',
       },
       description: {
-        en: 'A reassuring hug of sweet blackcurrant and cozy cypress wood. Warm, fruity, and nostalgic, it feels just like your favorite childhood blanket.',
-        ru: 'Утешающие объятия сладкой черной смородины и уютного кипариса. Теплый, фруктовый и ностальгический аромат, напоминающий любимый плед из детства.',
+        en: 'Juicy blackcurrant meets bright bergamot and a woody cypress finish.',
+        ru: 'Сочная чёрная смородина сочетается с ярким бергамотом и древесным кипарисом.',
       },
       color: '#D81B60',
       inGame: true,
-      clues: ['blackcurrant', 'cypress'],
-    },
-    {
-      slug: 'sleepy',
-      name: {
-        en: 'Sleepy',
-        ru: 'Sleepy',
-      },
-      description: {
-        en: 'A soft bedtime blend of lavender, sweet tonka, dreamy ylang ylang, and warm benzoin. Calm, cozy, and made for winding down.',
-        ru: 'Мягкая вечерняя композиция из лаванды, сладких бобов тонка, мечтательного иланг-иланга и тёплого бензоина. Спокойная и уютная.',
-      },
-      color: '#7E57C2',
-      inGame: true,
-      clues: ['lavender', 'tonka-bean', 'ylang-ylang', 'benzoin'],
+      clues: ['blackcurrant', 'bergamot', 'cypress'],
     },
     {
       slug: 'honey-i-washed-the-kids',
@@ -176,12 +162,12 @@ export const catalogSeedSnapshot: CatalogSeedSnapshot = {
         ru: 'Honey I Washed The Kids',
       },
       description: {
-        en: 'A golden, comforting blend of honeyed sweetness, citrus brightness, and soothing aloe. Warm, cheerful, and softly creamy.',
-        ru: 'Золотистый, уютный аромат медовой сладости, цитрусовой свежести и успокаивающего алоэ. Тёплый, радостный и мягко-кремовый.',
+        en: 'Golden toffee, honey and caramel are lifted by a touch of bergamot.',
+        ru: 'Золотистые ириски, мёд и карамель оттеняет лёгкий бергамот.',
       },
       color: '#F9A825',
       inGame: true,
-      clues: ['bergamot', 'sweet-orange'],
+      clues: ['toffee', 'honey', 'caramel', 'bergamot'],
     },
     {
       slug: 'avocado-co-wash',
@@ -190,12 +176,12 @@ export const catalogSeedSnapshot: CatalogSeedSnapshot = {
         ru: 'Avocado Co-Wash',
       },
       description: {
-        en: 'A creamy citrus cloud of avocado, bergamot, olibanum, and litsea cubeba. Fresh, fizzy, and softly green.',
-        ru: 'Кремовое цитрусовое облако из авокадо, бергамота, олибанума и литсеи кубеба. Свежее, искристое и мягко-зелёное.',
+        en: 'Bright bergamot meets the warm, resinous scent of olibanum.',
+        ru: 'Яркий бергамот сочетается с тёплым смолистым ароматом олибанума.',
       },
       color: '#8BC34A',
       inGame: true,
-      clues: ['bergamot', 'olibanum', 'litsea-cubeba'],
+      clues: ['bergamot', 'olibanum'],
     },
     {
       slug: 'grass',
@@ -204,12 +190,12 @@ export const catalogSeedSnapshot: CatalogSeedSnapshot = {
         ru: 'Grass',
       },
       description: {
-        en: 'A green rush of bright neroli, grounded sandalwood, and bergamot. Clean, earthy, and outdoorsy.',
-        ru: 'В этом зелёном аромате свежая трава сочетается с яркими нотами нероли, а бергамот дополняет землистые оттенки сандала.',
+        en: 'Fresh grass leads into neroli and bergamot, with sandalwood in the background.',
+        ru: 'Свежая трава раскрывается нероли и бергамотом на мягкой сандаловой основе.',
       },
       color: '#2E7D32',
       inGame: true,
-      clues: ['sandalwood', 'bergamot'],
+      clues: ['grass', 'neroli', 'bergamot', 'sandalwood'],
     },
     {
       slug: 'death-and-decay',
@@ -223,10 +209,308 @@ export const catalogSeedSnapshot: CatalogSeedSnapshot = {
       },
       color: '#FF6F00',
       inGame: true,
-      clues: ['ylang-ylang', 'tonka-bean', 'rose', 'jasmine'],
+      clues: ['jasmine', 'ylang-ylang', 'rose', 'tonka-bean'],
+    },
+    {
+      slug: 'sticky-dates',
+      name: {
+        en: 'Sticky Dates',
+        ru: 'Sticky Dates',
+      },
+      description: {
+        en: 'Rich caramel is wrapped in warm benzoin and smooth sandalwood.',
+        ru: 'Насыщенная карамель сочетается с тёплым бензоином и мягким сандалом.',
+      },
+      color: '#8D5A3B',
+      inGame: true,
+      clues: ['caramel', 'benzoin', 'sandalwood'],
+    },
+    {
+      slug: 'super-milk',
+      name: {
+        en: 'Super Milk',
+        ru: 'Super Milk',
+      },
+      description: {
+        en: 'Citrusy litsea cubeba softens into creamy vanilla and tonka bean.',
+        ru: 'Цитрусовая литсея кубеба смягчается сливочной ванилью и бобами тонка.',
+      },
+      color: '#F2D7A1',
+      inGame: true,
+      clues: ['litsea-cubeba', 'vanilla', 'tonka-bean'],
+    },
+    {
+      slug: 'let-the-good-times-roll',
+      name: {
+        en: 'Let The Good Times Roll',
+        ru: 'Let The Good Times Roll',
+      },
+      description: {
+        en: 'Buttery popcorn meets caramel sweetness and a touch of cinnamon.',
+        ru: 'Маслянистый попкорн сочетается с карамельной сладостью и ноткой корицы.',
+      },
+      color: '#D9A441',
+      inGame: true,
+      clues: ['popcorn', 'caramel', 'butter', 'cinnamon'],
+    },
+    {
+      slug: 'big',
+      name: {
+        en: 'Big',
+        ru: 'Big',
+      },
+      description: {
+        en: 'Neroli and orange blossom settle into a soft vanilla base.',
+        ru: 'Нероли и цветы апельсина раскрываются на мягкой ванильной основе.',
+      },
+      color: '#F7B267',
+      inGame: true,
+      clues: ['neroli', 'orange-blossom', 'vanilla'],
+    },
+    {
+      slug: 'sakura',
+      name: {
+        en: 'Sakura',
+        ru: 'Sakura',
+      },
+      description: {
+        en: 'Sunny lemon opens into delicate mimosa and jasmine.',
+        ru: 'Солнечный лимон раскрывается нежной мимозой и жасмином.',
+      },
+      color: '#F5B7C5',
+      inGame: true,
+      clues: ['lemon', 'mimosa', 'jasmine'],
+    },
+    {
+      slug: 'sex-bomb',
+      name: {
+        en: 'Sex Bomb',
+        ru: 'Sex Bomb',
+      },
+      description: {
+        en: 'Jasmine and ylang ylang bloom over aromatic clary sage.',
+        ru: 'Жасмин и иланг-иланг раскрываются на ароматной основе шалфея мускатного.',
+      },
+      color: '#D982B5',
+      inGame: true,
+      clues: ['jasmine', 'ylang-ylang', 'clary-sage'],
+    },
+    {
+      slug: 'chelsea-morning',
+      name: {
+        en: 'Chelsea Morning',
+        ru: 'Chelsea Morning',
+      },
+      description: {
+        en: 'Toffee and lemon melt into vanilla and tonka bean.',
+        ru: 'Ириски и лимон переходят в ваниль и бобы тонка.',
+      },
+      color: '#DDA86C',
+      inGame: true,
+      clues: ['toffee', 'lemon', 'vanilla', 'tonka-bean'],
+    },
+    {
+      slug: 'vanillary',
+      name: {
+        en: 'Vanillary',
+        ru: 'Vanillary',
+      },
+      description: {
+        en: 'Creamy vanilla is joined by jasmine and tonka bean.',
+        ru: 'Сливочную ваниль дополняют жасмин и бобы тонка.',
+      },
+      color: '#E6C69A',
+      inGame: true,
+      clues: ['vanilla', 'jasmine', 'tonka-bean'],
+    },
+    {
+      slug: 'junk',
+      name: {
+        en: 'Junk',
+        ru: 'Junk',
+      },
+      description: {
+        en: 'Tart blackcurrant and lemon cut through rosemary and sage.',
+        ru: 'Терпкая чёрная смородина и лимон сочетаются с розмарином и шалфеем.',
+      },
+      color: '#754C75',
+      inGame: true,
+      clues: ['blackcurrant', 'rosemary', 'lemon', 'sage'],
+    },
+    {
+      slug: '4-20-pm',
+      name: {
+        en: '4:20 PM',
+        ru: '4:20 PM',
+      },
+      description: {
+        en: 'Green cannabis meets earthy patchouli, oakmoss and sandalwood.',
+        ru: 'Зелёная нота конопли сочетается с землистыми пачули, дубовым мхом и сандалом.',
+      },
+      color: '#687B52',
+      inGame: true,
+      clues: ['cannabis', 'patchouli', 'oakmoss', 'sandalwood'],
+    },
+    {
+      slug: '29-high-street',
+      name: {
+        en: '29 High Street',
+        ru: '29 High Street',
+      },
+      description: {
+        en: 'Honey and caramel sweetness mingle with a fresh green accord.',
+        ru: 'Сладость мёда и карамели сочетается со свежими зелёными нотами.',
+      },
+      color: '#D6B45B',
+      inGame: true,
+      clues: ['honey', 'green-notes', 'caramel'],
     },
   ],
   ingredients: [
+    {
+      slug: 'red-apple',
+      name: {
+        en: 'Red Apple',
+        ru: 'Красное яблоко',
+      },
+      imagePath: '/images/ingredients/red_apple.png',
+    },
+    {
+      slug: 'cinnamon',
+      name: {
+        en: 'Cinnamon',
+        ru: 'Корица',
+      },
+      imagePath: '/images/ingredients/cinnamon.png',
+    },
+    {
+      slug: 'lemon',
+      name: {
+        en: 'Lemon',
+        ru: 'Лимон',
+      },
+      imagePath: '/images/ingredients/lemon.png',
+    },
+    {
+      slug: 'grass',
+      name: {
+        en: 'Grass',
+        ru: 'Трава',
+      },
+      imagePath: '/images/ingredients/grass.png',
+    },
+    {
+      slug: 'neroli',
+      name: {
+        en: 'Neroli',
+        ru: 'Нероли',
+      },
+      imagePath: '/images/ingredients/neroli.png',
+    },
+    {
+      slug: 'toffee',
+      name: {
+        en: 'Toffee',
+        ru: 'Ириски',
+      },
+      imagePath: '/images/ingredients/toffee.png',
+    },
+    {
+      slug: 'honey',
+      name: {
+        en: 'Honey',
+        ru: 'Мёд',
+      },
+      imagePath: '/images/ingredients/honey.png',
+    },
+    {
+      slug: 'caramel',
+      name: {
+        en: 'Caramel',
+        ru: 'Карамель',
+      },
+      imagePath: '/images/ingredients/caramel.png',
+    },
+    {
+      slug: 'popcorn',
+      name: {
+        en: 'Popcorn',
+        ru: 'Попкорн',
+      },
+      imagePath: '/images/ingredients/popcorn.png',
+    },
+    {
+      slug: 'butter',
+      name: {
+        en: 'Butter',
+        ru: 'Сливочное масло',
+      },
+      imagePath: '/images/ingredients/butter.png',
+    },
+    {
+      slug: 'orange-blossom',
+      name: {
+        en: 'Orange Blossom',
+        ru: 'Цветы апельсина',
+      },
+      imagePath: '/images/ingredients/neroli.png',
+    },
+    {
+      slug: 'mimosa',
+      name: {
+        en: 'Mimosa',
+        ru: 'Мимоза',
+      },
+      imagePath: '/images/ingredients/mimosa.png',
+    },
+    {
+      slug: 'clary-sage',
+      name: {
+        en: 'Clary Sage',
+        ru: 'Шалфей мускатный',
+      },
+      imagePath: '/images/ingredients/clary_sage.png',
+    },
+    {
+      slug: 'rosemary',
+      name: {
+        en: 'Rosemary',
+        ru: 'Розмарин',
+      },
+      imagePath: '/images/ingredients/rosemary.png',
+    },
+    {
+      slug: 'sage',
+      name: {
+        en: 'Sage',
+        ru: 'Шалфей',
+      },
+      imagePath: '/images/ingredients/clary_sage.png',
+    },
+    {
+      slug: 'cannabis',
+      name: {
+        en: 'Cannabis',
+        ru: 'Конопля',
+      },
+      imagePath: '/images/ingredients/cannabis.png',
+    },
+    {
+      slug: 'oakmoss',
+      name: {
+        en: 'Oakmoss',
+        ru: 'Дубовый мох',
+      },
+      imagePath: '/images/ingredients/oakmoss.png',
+    },
+    {
+      slug: 'green-notes',
+      name: {
+        en: 'Green Notes',
+        ru: 'Зелёные ноты',
+      },
+      imagePath: '/images/ingredients/green_notes.png',
+    },
     {
       slug: 'rose',
       name: {

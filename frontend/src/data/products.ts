@@ -56,10 +56,10 @@ const productDefinitions: Product[] = [
       en: 'Love',
       ru: 'Love',
     },
-    ingredients: ['Lemongrass', 'Bergamot', 'Ylang Ylang', 'Rose'],
+    ingredients: ['Lemongrass', 'Red Apple', 'Rose', 'Cinnamon'],
     description: {
-      en: "One spritz of this sweet scent and all of a sudden you're in a rom-com of your own making. Flirty rose swirls with crisp lemongrass and bergamot to create a sweet, tart take on a delicious caramel apple scent. Cover yourself in this alluring perfume and get ready to fall head over heels.",
-      ru: 'Забудьте о любовных зельях — этот опьяняющий аромат сам станет вашим союзником в привлечении поклонников. Сначала воздух наполняет напористый лемонграсс, сквозь который просвечивает солнечный бергамот. Затем головокружительный иланг-иланг добавляет сладкое послевкусие, которое сводит с ума.',
+      en: 'A bright opening of lemongrass leads to red apple, rose and warm cinnamon.',
+      ru: 'Яркий лемонграсс сменяется красным яблоком, розой и тёплой корицей.',
     },
     color: '#EC407A',
   },
@@ -69,7 +69,7 @@ const productDefinitions: Product[] = [
       en: 'Karma',
       ru: 'Karma',
     },
-    ingredients: ['Patchouli', 'Sweet Orange', 'Lemongrass', 'Pine'],
+    ingredients: ['Sweet Orange', 'Patchouli', 'Pine', 'Lemongrass'],
     description: {
       en: 'A combination of patchouli, sweet orange, and pine, this signature retro scent is a spicy, herbaceous, and sweet citrus explosion that leaves you feeling grounded and inspired.',
       ru: 'Культовый аромат Lush, сочетающий головокружительные слои апельсина, специй и пачули. Отправляйтесь в Лондон 60-х годов, пока облака возбуждающих пачули смешиваются с жизнеутверждающим бразильским апельсином и очищающей сосной. Уникальный, яркий аромат для свободных духом.',
@@ -82,7 +82,7 @@ const productDefinitions: Product[] = [
       en: 'Rose Jam',
       ru: 'Rose Jam',
     },
-    ingredients: ['Rose', 'Geranium'],
+    ingredients: ['Rose', 'Lemon', 'Geranium'],
     description: {
       en: 'A sweet, jammy, and romantic blend of rose oil, geranium, and fresh lemon. It is like walking through a sun-drenched Turkish rose garden in full bloom.',
       ru: 'Прогуляйтесь по бесконечным полям пудрово-розовых лепестков с этим изысканным ароматом, в котором роскошная герань сочетается с розовым маслом из местечка Сенир в Турции.',
@@ -108,7 +108,7 @@ const productDefinitions: Product[] = [
       en: 'Dirty',
       ru: 'Dirty',
     },
-    ingredients: ['Mint', 'Tarragon', 'Sandalwood', 'Lavender'],
+    ingredients: ['Mint', 'Tarragon', 'Thyme', 'Lavender'],
     description: {
       en: 'A clean, bracing rush of fresh spearmint, tarragon, thyme, and rich sandalwood. It\'s an invigorating breath of fresh air designed to keep you feeling crisp and revitalized.',
       ru: 'Дёрти — это многослойная композиция из перечной мяты, эстрагона и тимьяна, которая настигает вас, как порыв свежего ветра. Перечная мята — освежающая, энергичная нота, проясняющая сознание и охлаждающая кожу. Сандаловое дерево и лаванда добавляют аромату цветочные и древесные ноты.',
@@ -134,10 +134,10 @@ const productDefinitions: Product[] = [
       en: 'The Comforter',
       ru: 'The Comforter',
     },
-    ingredients: ['Blackcurrant', 'Cypress'],
+    ingredients: ['Blackcurrant', 'Bergamot', 'Cypress'],
     description: {
-      en: 'A reassuring hug of sweet blackcurrant and cozy cypress wood. Warm, fruity, and nostalgic, it feels just like your favorite childhood blanket.',
-      ru: 'Утешающие объятия сладкой черной смородины и уютного кипариса. Теплый, фруктовый и ностальгический аромат, напоминающий любимый плед из детства.',
+      en: 'Juicy blackcurrant meets bright bergamot and a woody cypress finish.',
+      ru: 'Сочная чёрная смородина сочетается с ярким бергамотом и древесным кипарисом.',
     },
     color: '#D81B60',
   },
@@ -155,28 +155,15 @@ const productDefinitions: Product[] = [
   //   color: '#FF4FB3',
   // },
   {
-    id: 'sleepy',
-    name: {
-      en: 'Sleepy',
-      ru: 'Sleepy',
-    },
-    ingredients: ['Lavender', 'Tonka Bean', 'Ylang Ylang', 'Benzoin'],
-    description: {
-      en: 'A soft bedtime blend of lavender, sweet tonka, dreamy ylang ylang, and warm benzoin. Calm, cozy, and made for winding down.',
-      ru: 'Мягкая вечерняя композиция из лаванды, сладких бобов тонка, мечтательного иланг-иланга и тёплого бензоина. Спокойная и уютная.',
-    },
-    color: '#7E57C2',
-  },
-  {
     id: 'honey-i-washed-the-kids',
     name: {
       en: 'Honey I Washed The Kids',
       ru: 'Honey I Washed The Kids',
     },
-    ingredients: ['Bergamot', 'Sweet Orange'],
+    ingredients: ['Toffee', 'Honey', 'Caramel', 'Bergamot'],
     description: {
-      en: 'A golden, comforting blend of honeyed sweetness, citrus brightness, and soothing aloe. Warm, cheerful, and softly creamy.',
-      ru: 'Золотистый, уютный аромат медовой сладости, цитрусовой свежести и успокаивающего алоэ. Тёплый, радостный и мягко-кремовый.',
+      en: 'Golden toffee, honey and caramel are lifted by a touch of bergamot.',
+      ru: 'Золотистые ириски, мёд и карамель оттеняет лёгкий бергамот.',
     },
     color: '#F9A825',
   },
@@ -186,10 +173,10 @@ const productDefinitions: Product[] = [
       en: 'Avocado Co-Wash',
       ru: 'Avocado Co-Wash',
     },
-    ingredients: ['Bergamot', 'Olibanum', 'Litsea Cubeba'],
+    ingredients: ['Bergamot', 'Olibanum'],
     description: {
-      en: 'A creamy citrus cloud of avocado, bergamot, olibanum, and litsea cubeba. Fresh, fizzy, and softly green.',
-      ru: 'Кремовое цитрусовое облако из авокадо, бергамота, олибанума и литсеи кубеба. Свежее, искристое и мягко-зелёное.',
+      en: 'Bright bergamot meets the warm, resinous scent of olibanum.',
+      ru: 'Яркий бергамот сочетается с тёплым смолистым ароматом олибанума.',
     },
     color: '#8BC34A',
   },
@@ -212,10 +199,10 @@ const productDefinitions: Product[] = [
       en: 'Grass',
       ru: 'Grass',
     },
-    ingredients: ['Sandalwood', 'Bergamot'],
+    ingredients: ['Grass', 'Neroli', 'Bergamot', 'Sandalwood'],
     description: {
-      en: 'A green rush of bright neroli, grounded sandalwood, and bergamot. Clean, earthy, and outdoorsy.',
-      ru: 'В этом зелёном аромате свежая трава сочетается с яркими нотами нероли, а бергамот дополняет землистые оттенки сандала.',
+      en: 'Fresh grass leads into neroli and bergamot, with sandalwood in the background.',
+      ru: 'Свежая трава раскрывается нероли и бергамотом на мягкой сандаловой основе.',
     },
     color: '#2E7D32',
   },
@@ -225,16 +212,177 @@ const productDefinitions: Product[] = [
       en: 'Death and Decay',
       ru: 'Death and Decay',
     },
-    ingredients: ['Ylang Ylang', 'Tonka Bean', 'Rose', 'Jasmine'],
+    ingredients: ['Jasmine', 'Ylang Ylang', 'Rose', 'Tonka Bean'],
     description: {
       en: 'Intoxicating jasmine and ylang ylang mingle with sweet rose to create a bouquet that first overwhelms, then soothes. Let this floral fragrance carry you to a serene space where beauty and its inevitable decay can be contemplated without fear. It is meditation, acceptance, and optimism expressed in magnificent floral form.',
       ru: 'Пьянящий жасмин и иланг-иланг сочетаются со сладкой розой, образуя букет, который сначала подавляет, а затем успокаивает. Позвольте этому цветочному аромату перенести вас в безмятежное пространство, где красоту и ее неизбежный упадок можно созерцать без страха. Это медитация, принятие и оптимизм, переданные в великолепном цветочном облике.',
     },
     color: '#FF6F00',
   },
+  {
+    id: 'sticky-dates',
+    name: {
+      en: 'Sticky Dates',
+      ru: 'Sticky Dates',
+    },
+    description: {
+      en: 'Rich caramel is wrapped in warm benzoin and smooth sandalwood.',
+      ru: 'Насыщенная карамель сочетается с тёплым бензоином и мягким сандалом.',
+    },
+    color: '#8D5A3B',
+    ingredients: ['Caramel', 'Benzoin', 'Sandalwood'],
+  },
+  {
+    id: 'super-milk',
+    name: {
+      en: 'Super Milk',
+      ru: 'Super Milk',
+    },
+    description: {
+      en: 'Citrusy litsea cubeba softens into creamy vanilla and tonka bean.',
+      ru: 'Цитрусовая литсея кубеба смягчается сливочной ванилью и бобами тонка.',
+    },
+    color: '#F2D7A1',
+    ingredients: ['Litsea Cubeba', 'Vanilla', 'Tonka Bean'],
+  },
+  {
+    id: 'let-the-good-times-roll',
+    name: {
+      en: 'Let The Good Times Roll',
+      ru: 'Let The Good Times Roll',
+    },
+    description: {
+      en: 'Buttery popcorn meets caramel sweetness and a touch of cinnamon.',
+      ru: 'Маслянистый попкорн сочетается с карамельной сладостью и ноткой корицы.',
+    },
+    color: '#D9A441',
+    ingredients: ['Popcorn', 'Caramel', 'Butter', 'Cinnamon'],
+  },
+  {
+    id: 'big',
+    name: {
+      en: 'Big',
+      ru: 'Big',
+    },
+    description: {
+      en: 'Neroli and orange blossom settle into a soft vanilla base.',
+      ru: 'Нероли и цветы апельсина раскрываются на мягкой ванильной основе.',
+    },
+    color: '#F7B267',
+    ingredients: ['Neroli', 'Orange Blossom', 'Vanilla'],
+  },
+  {
+    id: 'sakura',
+    name: {
+      en: 'Sakura',
+      ru: 'Sakura',
+    },
+    description: {
+      en: 'Sunny lemon opens into delicate mimosa and jasmine.',
+      ru: 'Солнечный лимон раскрывается нежной мимозой и жасмином.',
+    },
+    color: '#F5B7C5',
+    ingredients: ['Lemon', 'Mimosa', 'Jasmine'],
+  },
+  {
+    id: 'sex-bomb',
+    name: {
+      en: 'Sex Bomb',
+      ru: 'Sex Bomb',
+    },
+    description: {
+      en: 'Jasmine and ylang ylang bloom over aromatic clary sage.',
+      ru: 'Жасмин и иланг-иланг раскрываются на ароматной основе шалфея мускатного.',
+    },
+    color: '#D982B5',
+    ingredients: ['Jasmine', 'Ylang Ylang', 'Clary Sage'],
+  },
+  {
+    id: 'chelsea-morning',
+    name: {
+      en: 'Chelsea Morning',
+      ru: 'Chelsea Morning',
+    },
+    description: {
+      en: 'Toffee and lemon melt into vanilla and tonka bean.',
+      ru: 'Ириски и лимон переходят в ваниль и бобы тонка.',
+    },
+    color: '#DDA86C',
+    ingredients: ['Toffee', 'Lemon', 'Vanilla', 'Tonka Bean'],
+  },
+  {
+    id: 'vanillary',
+    name: {
+      en: 'Vanillary',
+      ru: 'Vanillary',
+    },
+    description: {
+      en: 'Creamy vanilla is joined by jasmine and tonka bean.',
+      ru: 'Сливочную ваниль дополняют жасмин и бобы тонка.',
+    },
+    color: '#E6C69A',
+    ingredients: ['Vanilla', 'Jasmine', 'Tonka Bean'],
+  },
+  {
+    id: 'junk',
+    name: {
+      en: 'Junk',
+      ru: 'Junk',
+    },
+    description: {
+      en: 'Tart blackcurrant and lemon cut through rosemary and sage.',
+      ru: 'Терпкая чёрная смородина и лимон сочетаются с розмарином и шалфеем.',
+    },
+    color: '#754C75',
+    ingredients: ['Blackcurrant', 'Rosemary', 'Lemon', 'Sage'],
+  },
+  {
+    id: '4-20-pm',
+    name: {
+      en: '4:20 PM',
+      ru: '4:20 PM',
+    },
+    description: {
+      en: 'Green cannabis meets earthy patchouli, oakmoss and sandalwood.',
+      ru: 'Зелёная нота конопли сочетается с землистыми пачули, дубовым мхом и сандалом.',
+    },
+    color: '#687B52',
+    ingredients: ['Cannabis', 'Patchouli', 'Oakmoss', 'Sandalwood'],
+  },
+  {
+    id: '29-high-street',
+    name: {
+      en: '29 High Street',
+      ru: '29 High Street',
+    },
+    description: {
+      en: 'Honey and caramel sweetness mingle with a fresh green accord.',
+      ru: 'Сладость мёда и карамели сочетается со свежими зелёными нотами.',
+    },
+    color: '#D6B45B',
+    ingredients: ['Honey', 'Green Notes', 'Caramel'],
+  },
 ];
 
 const ingredientImages: Readonly<Record<string, string>> = {
+  'red apple': '/images/ingredients/red_apple.png',
+  'cinnamon': '/images/ingredients/cinnamon.png',
+  'lemon': '/images/ingredients/lemon.png',
+  'grass': '/images/ingredients/grass.png',
+  'neroli': '/images/ingredients/neroli.png',
+  'toffee': '/images/ingredients/toffee.png',
+  'honey': '/images/ingredients/honey.png',
+  'caramel': '/images/ingredients/caramel.png',
+  'popcorn': '/images/ingredients/popcorn.png',
+  'butter': '/images/ingredients/butter.png',
+  'orange blossom': '/images/ingredients/neroli.png',
+  'mimosa': '/images/ingredients/mimosa.png',
+  'clary sage': '/images/ingredients/clary_sage.png',
+  'rosemary': '/images/ingredients/rosemary.png',
+  'sage': '/images/ingredients/clary_sage.png',
+  'cannabis': '/images/ingredients/cannabis.png',
+  'oakmoss': '/images/ingredients/oakmoss.png',
+  'green notes': '/images/ingredients/green_notes.png',
   almond: '/images/ingredients/almond.png',
   benzoin: '/images/ingredients/benzoin.png',
   bergamot: '/images/ingredients/bergamot.png',
