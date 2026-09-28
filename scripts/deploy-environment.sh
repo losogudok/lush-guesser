@@ -9,25 +9,6 @@ set -Eeuo pipefail
 
 socket_path="$FRONTEND_SOCKET_DIR/frontend.sock"
 
-wait_for_stack() {
-  local _
-
-  for _ in {1..30}; do
-    if [ -S "$socket_path" ] && \
-      curl --fail --silent --show-error --unix-socket "$socket_path" http://localhost/ >/dev/null && \
-      curl --fail --silent --show-error --unix-socket "$socket_path" \
-        --output /dev/null --write-out '%{content_type}' \
-        'http://localhost/api/leaderboard?limit=1' | grep -qi '^application/json'; then
-      return 0
-    fi
-    sleep 2
-  done
-
-  docker compose ps
-  docker compose logs --tail=200
-  return 1
-}
-
 cd "$DEPLOY_PATH"
 
 install -d -m 0755 "$FRONTEND_SOCKET_DIR" .deploy
@@ -50,7 +31,12 @@ docker compose build
 docker compose stop frontend >/dev/null 2>&1 || true
 rm -f "$socket_path"
 ./scripts/compose-up-with-diagnostics.sh
-wait_for_stack
+# The release only counts as successful after the readiness gate observed
+# container health, completed migrations, public game delivery, and public
+# Leaderboard routing (issue #6).
+./scripts/release-readiness.sh
 
 git rev-parse HEAD > .deploy/deployed-sha
-echo "Deployed $(cat .deploy/deployed-sha) as $COMPOSE_PROJECT_NAME."
+deployed_revision=$(cat .deploy/deployed-sha)
+echo "Release $deployed_revision passed readiness: backend container health, database migrations, public game delivery, public Leaderboard routing."
+echo "Deployed $deployed_revision as $COMPOSE_PROJECT_NAME."

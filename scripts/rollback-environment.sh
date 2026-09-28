@@ -11,16 +11,18 @@ cd "$DEPLOY_PATH"
 
 previous_sha_file=.deploy/previous-sha
 if [ ! -s "$previous_sha_file" ]; then
-  echo "No previous deployment SHA is available for rollback." >&2
+  echo "Recovery failed: no previous deployment SHA is available for rollback." >&2
   exit 1
 fi
 
 failed_sha=$(git rev-parse HEAD)
 previous_sha=$(cat "$previous_sha_file")
 if [ "$failed_sha" = "$previous_sha" ]; then
-  echo "Previous deployment SHA is the current SHA; refusing a no-op rollback." >&2
+  echo "Recovery failed: previous deployment SHA is the current SHA; refusing a no-op rollback." >&2
   exit 1
 fi
+
+echo "Recovery attempt: rolling $COMPOSE_PROJECT_NAME back from $failed_sha to $previous_sha."
 
 git checkout --force "$previous_sha"
 git reset --hard "$previous_sha"
@@ -30,23 +32,16 @@ docker compose config --quiet
 docker compose build
 docker compose stop frontend >/dev/null 2>&1 || true
 rm -f "$socket_path"
-./scripts/compose-up-with-diagnostics.sh
 
-for _ in {1..30}; do
-  if [ -S "$socket_path" ] && \
-    curl --fail --silent --show-error --unix-socket "$socket_path" http://localhost/ >/dev/null && \
-    curl --fail --silent --show-error --unix-socket "$socket_path" \
-      --output /dev/null --write-out '%{content_type}' \
-      'http://localhost/api/leaderboard?limit=1' | grep -qi '^application/json'; then
-    printf '%s\n' "$failed_sha" > .deploy/rolled-back-from
-    printf '%s\n' "$previous_sha" > .deploy/deployed-sha
-    echo "Rolled back $COMPOSE_PROJECT_NAME from $failed_sha to $previous_sha."
-    exit 0
-  fi
-  sleep 2
-done
+# The recovered revision must pass the same readiness gate as a fresh
+# release before it may be reported as restored (issue #7).
+if ./scripts/compose-up-with-diagnostics.sh && ./scripts/release-readiness.sh; then
+  printf '%s\n' "$failed_sha" > .deploy/rolled-back-from
+  printf '%s\n' "$previous_sha" > .deploy/deployed-sha
+  echo "Recovery succeeded: release $previous_sha passed readiness: backend container health, database migrations, public game delivery, public Leaderboard routing."
+  echo "Rolled back $COMPOSE_PROJECT_NAME from $failed_sha to $previous_sha."
+  exit 0
+fi
 
-docker compose ps
-docker compose logs --tail=200
-echo "Rollback to $previous_sha did not become healthy." >&2
+echo "Recovery failed: release $previous_sha did not pass readiness; $COMPOSE_PROJECT_NAME remains unrecovered on $previous_sha." >&2
 exit 1

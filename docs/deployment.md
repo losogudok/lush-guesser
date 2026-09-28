@@ -33,13 +33,41 @@ Environment variables:
 | `FRONTEND_SOCKET_DIR` | `/run/lush-guesser/dev` | `/run/lush-guesser/prod` |
 | `LEADERBOARD_VOLUME_NAME` | `lush-guesser-dev-data` | `lush-guesser-prod-data` |
 
-Production deployment must remain disabled until Nginx, certificates, socket directories, and the SSH key are verified. A push to `main` then deploys the exact commit, checks the local socket and public HTTPS endpoint, and rolls back to the previous successful commit if health verification fails.
+Production deployment must remain disabled until Nginx, certificates, socket directories, and the SSH key are verified. A push to `main` then deploys the exact commit, proves readiness through the production adapter, checks the public HTTPS endpoint, and recovers the previous release if readiness or the public checks fail.
 
 ## Host provisioning
 
 Install `deploy/tmpfiles.d/lush-guesser.conf` as a tmpfiles rule, mount `/run/lush-guesser` into the Nginx container using `deploy/nginx/docker-compose.override.yml`, and install `deploy/nginx/lush-guesser.conf` in the host Nginx configuration. Validate the Nginx configuration before recreating the proxy.
 
 The deployment scripts preserve the Leaderboard Entry volume and migrate a legacy `data/database.sqlite` file only when the target volume has no database.
+
+## Release readiness gate
+
+`scripts/deploy-environment.sh` does not count container starts as a release. After `docker compose up`, `scripts/release-readiness.sh` must observe every stage through the production adapter within a bounded timeout (60 attempts, 2 seconds apart, per stage):
+
+1. **Backend container health** — the Docker healthcheck reports `healthy`.
+2. **Database migrations** — the migration ledger records every migration from `server/src/database.ts` and every expected table exists (`leaderboard`, `ingredient`, `product`, `product_ingredient_clue`). Keep these lists in sync when migrations change.
+3. **Public game delivery** — the frontend socket serves the game HTML.
+4. **Public Leaderboard routing** — a non-mutating `GET /api/leaderboard?limit=1` returns JSON through the same socket.
+
+Every check is read-only and repeatable: it never creates Leaderboard Entries or mutates Player data. When a stage fails, the failing stage is named and container diagnostics (with Telegram credentials redacted) are printed, and the release command exits non-zero. A successful release prints the deployed revision and the readiness checks that passed. The workflow then re-verifies the public URL from the runner side (game HTML plus non-mutating Leaderboard JSON).
+
+The readiness gate is exercised twice in CI by failure injection: `scripts/check-release-failure.sh` proves that a healthy container with incomplete migrations, and a backend that cannot start, are both reported as failures with no deployed revision recorded.
+
+## Recovery from a failed deployment
+
+The workflow records the previous known-good revision before every update: `.deploy/deployed-sha` (written only after a release passes readiness) is copied to `.deploy/previous-sha`. When a deploy step or the public readiness check fails, the workflow runs `scripts/rollback-environment.sh` over the SSH seam. The script:
+
+1. refuses to run without a recorded previous revision, and refuses a no-op rollback;
+2. checks out the previous revision and rebuilds;
+3. requires the recovered revision to pass the same readiness gate before reporting success;
+4. never touches the deployment-owned Leaderboard Entry volume, so entries survive recovery untouched.
+
+Logs distinguish the three phases: the original failure (`Release readiness failed at stage: ...` from the deploy), the `Recovery attempt: rolling ... back from ... to ...` line, and the final state — `Recovery succeeded: ...` with `.deploy/deployed-sha` and `.deploy/rolled-back-from` updated, or `Recovery failed: ... remains unrecovered` when the previous revision also fails. The workflow verifies the recovered release against the public URL and reports the final state in the run log.
+
+`scripts/check-release-rollback.sh` proves both paths repeatably in a throwaway deployment with a synthetic git history: a successful recovery after a failed readiness check (including a submitted Leaderboard Entry surviving recovery), the terminal failure path when the rollback target is also broken, and the refusal to roll back without a recorded previous revision.
+
+Recovery restores the application revision only. Leaderboard Entry storage is deployment-owned and out of scope for both failure and recovery. Back it up before risky operations and restore it with the verified procedure below.
 
 ## Telegram inline mode
 

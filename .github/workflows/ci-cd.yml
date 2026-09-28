@@ -106,6 +106,12 @@ jobs:
       - name: Verify Leaderboard Entry persistence
         run: ./scripts/check-leaderboard-persistence.sh
 
+      - name: Verify release readiness failure handling
+        run: ./scripts/check-release-failure.sh
+
+      - name: Verify release recovery paths
+        run: ./scripts/check-release-rollback.sh
+
   deploy:
     name: Deploy ${{ github.ref_name }}
     runs-on: ubuntu-latest
@@ -176,16 +182,16 @@ jobs:
         run: |
           : "${DEPLOY_URL:?DEPLOY_URL is required}"
           for _ in {1..30}; do
-            if curl --fail --silent --show-error "$DEPLOY_URL/" >/dev/null && \
+            if curl --fail --silent --show-error "$DEPLOY_URL/" | grep -qi 'Lush Scent Guesser' && \
               curl --fail --silent --show-error \
                 --output /dev/null --write-out '%{content_type}' \
                 "$DEPLOY_URL/api/leaderboard?limit=1" | grep -qi '^application/json'; then
-              echo "$DEPLOY_URL is healthy."
+              echo "Release readiness confirmed at $DEPLOY_URL: public game delivery and public Leaderboard routing."
               exit 0
             fi
             sleep 5
           done
-          echo "$DEPLOY_URL did not become healthy." >&2
+          echo "$DEPLOY_URL did not serve the public game and Leaderboard API." >&2
           exit 1
 
       - name: Roll back failed deployment
@@ -220,8 +226,9 @@ jobs:
         env:
           DEPLOY_URL: ${{ vars.DEPLOY_URL }}
         run: |
-          curl --fail --show-error --silent "$DEPLOY_URL/" >/dev/null
+          : "${DEPLOY_URL:?DEPLOY_URL is required}"
+          curl --fail --show-error --silent "$DEPLOY_URL/" | grep -qi 'Lush Scent Guesser'
           curl --fail --show-error --silent \
             --output /dev/null --write-out '%{content_type}' \
             "$DEPLOY_URL/api/leaderboard?limit=1" | grep -qi '^application/json'
-          echo "Rollback is healthy at $DEPLOY_URL."
+          echo "Final state: recovered. The restored release passed the public readiness checks at $DEPLOY_URL."
