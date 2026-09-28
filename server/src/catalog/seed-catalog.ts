@@ -7,7 +7,7 @@ import { catalogSeedSnapshot } from './seed-snapshot';
 import {
   DATABASE_ENTITIES,
   DATABASE_MIGRATIONS,
-  DATABASE_PATH,
+  resolveDatabasePath,
 } from '../database';
 
 /** Image volume location; configurable so each environment owns its volume. */
@@ -51,10 +51,11 @@ const main = async (): Promise<void> => {
     `[seed] Starter images ready in the image volume at ${imageVolumePath}.`,
   );
 
-  console.log(`[seed] Connecting to the database at ${DATABASE_PATH}…`);
+  const databasePath = resolveDatabasePath();
+  console.log(`[seed] Connecting to the database at ${databasePath}…`);
   const dataSource = new DataSource({
     type: 'sqlite',
-    database: DATABASE_PATH,
+    database: databasePath,
     entities: [...DATABASE_ENTITIES],
     migrations: [...DATABASE_MIGRATIONS],
   });

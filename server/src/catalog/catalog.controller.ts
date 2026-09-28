@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { CatalogService } from './catalog.service';
+import { AdminPasswordGuard } from './admin-password.guard';
 import { Product } from './product.entity';
 import type { LocalizedText } from './localized-text';
 
@@ -58,11 +59,14 @@ export class CatalogController {
   }
 
   /**
-   * Admin-facing Product creation. The API rejects invalid catalog data:
+   * Admin-facing Product creation, guarded by the shared admin secret
+   * (header `x-admin-password` matching `ADMIN_PASSWORD`) until proper
+   * admin auth ships in #20. The API rejects invalid catalog data:
    * an admin panel cannot fix what the API accepts. Validation happens in
    * CatalogService; raw unvalidated fields are passed through untouched.
    */
   @Post('products')
+  @UseGuards(AdminPasswordGuard)
   async createProduct(
     @Body()
     body: {

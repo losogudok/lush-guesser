@@ -24,6 +24,7 @@ describe('Catalog (e2e)', () => {
     process.env.TELEGRAM_BOT_TOKEN = 'test-bot-token';
     process.env.TELEGRAM_WEBHOOK_SECRET = 'test-webhook-secret';
     process.env.TELEGRAM_MINI_APP_URL = 'https://lush.example.test/';
+    process.env.ADMIN_PASSWORD = 'test-admin-password';
     tempDir = mkdtempSync(join(tmpdir(), 'lush-guesser-catalog-'));
     process.env.DATABASE_PATH = join(tempDir, 'database.sqlite');
 
@@ -62,6 +63,7 @@ describe('Catalog (e2e)', () => {
   const postProduct = (overrides: Record<string, unknown>) =>
     request(app.getHttpServer())
       .post('/api/catalog/products')
+      .set('x-admin-password', 'test-admin-password')
       .send({
         name: { en: 'Confetti', ru: 'Confetti' },
         description: { en: 'English.', ru: 'Русское.' },
@@ -171,6 +173,49 @@ describe('Catalog (e2e)', () => {
     ]);
   });
 
+  it('/api/catalog/products (POST) rejects a request without the admin password header', async () => {
+    await createIngredient('Rose', 'Роза');
+    await createIngredient('Sandalwood', 'Сандал');
+    await request(app.getHttpServer())
+      .post('/api/catalog/products')
+      .send({
+        name: { en: 'Confetti', ru: 'Confetti' },
+        description: { en: 'English.', ru: 'Русское.' },
+        color: '#A779B8',
+        clues: ['rose', 'sandalwood'],
+      })
+      .expect(401);
+  });
+
+  it('/api/catalog/products (POST) rejects a wrong admin password', async () => {
+    await createIngredient('Rose', 'Роза');
+    await createIngredient('Sandalwood', 'Сандал');
+    await request(app.getHttpServer())
+      .post('/api/catalog/products')
+      .set('x-admin-password', 'not-the-password')
+      .send({
+        name: { en: 'Confetti', ru: 'Confetti' },
+        description: { en: 'English.', ru: 'Русское.' },
+        color: '#A779B8',
+        clues: ['rose', 'sandalwood'],
+      })
+      .expect(401);
+  });
+
+  it('/api/catalog/products (POST) fails closed when ADMIN_PASSWORD is unset', async () => {
+    delete process.env.ADMIN_PASSWORD;
+    await request(app.getHttpServer())
+      .post('/api/catalog/products')
+      .set('x-admin-password', 'test-admin-password')
+      .send({
+        name: { en: 'Confetti', ru: 'Confetti' },
+        description: { en: 'English.', ru: 'Русское.' },
+        color: '#A779B8',
+        clues: ['rose'],
+      })
+      .expect(401);
+  });
+
   afterEach(async () => {
     await app.close();
     jest.restoreAllMocks();
@@ -178,5 +223,6 @@ describe('Catalog (e2e)', () => {
     delete process.env.TELEGRAM_BOT_TOKEN;
     delete process.env.TELEGRAM_WEBHOOK_SECRET;
     delete process.env.TELEGRAM_MINI_APP_URL;
+    delete process.env.ADMIN_PASSWORD;
   });
 });

@@ -58,3 +58,11 @@ After implementation, set these values in a deployment-owned `.env` file beside 
 When `TELEGRAM_WEBHOOK_ENABLED=false`, startup deletes the webhook without dropping pending updates, then starts long polling for `inline_query`. When it is `true`, startup registers `/webhook` on the origin of `TELEGRAM_MINI_APP_URL` with Telegram and uses webhook delivery; the webhook fails closed when its secret is absent or invalid. Inline queries are answered with a Mini App button and no chat message is sent. `getUpdates` polling and webhook delivery cannot be active for the same bot token at once. Run at most one backend poller per token, and use separate bot tokens for development and production.
 
 When `TELEGRAM_BOT_PROXY_URL` is set, route outbound Bot API requests—including webhook registration/deletion, polling, and inline-query answers—through that SOCKS5 proxy. The proxy must be reachable from the backend container. The proxy URL may omit its port when the server listens on the SOCKS default port `1080`; URL-encode reserved characters in credentials. The proxy affects server-to-Telegram requests only; Telegram's incoming webhook requests and players' Telegram connectivity do not use it.
+
+## Admin catalog API
+
+| Variable | Purpose |
+| --- | --- |
+| `ADMIN_PASSWORD` | Shared admin secret required to write catalog data. `POST /api/catalog/products` accepts it in the `x-admin-password` request header; the endpoint fails closed with 401 when the variable is unset or empty |
+
+Until proper admin authentication ships (#20), Product creation is guarded by this shared secret. Every deployment must set a distinct, non-empty value; catalog `GET` endpoints stay public and read-only.
