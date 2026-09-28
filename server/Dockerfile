@@ -1,12 +1,5 @@
-# Stage 1: Build NestJS and compile SQLite3
+# Stage 1: Build NestJS
 FROM node:24-slim AS builder
-
-# Install build dependencies for compiling native node modules (sqlite3)
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY package*.json ./
