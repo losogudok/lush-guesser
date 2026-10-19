@@ -32,3 +32,22 @@ data/
 
 # Runtime deployment state
 .deploy/
+server/dist/app.module.d.ts
+server/dist/app.module.js
+server/dist/app.module.js.map
+server/dist/main.d.ts
+server/dist/main.js
+server/dist/main.js.map
+server/dist/tsconfig.build.tsbuildinfo
+server/dist/leaderboard/leaderboard.controller.d.ts
+server/dist/leaderboard/leaderboard.controller.js
+server/dist/leaderboard/leaderboard.controller.js.map
+server/dist/leaderboard/leaderboard.entity.d.ts
+server/dist/leaderboard/leaderboard.entity.js
+server/dist/leaderboard/leaderboard.entity.js.map
+server/dist/leaderboard/leaderboard.module.d.ts
+server/dist/leaderboard/leaderboard.module.js
+server/dist/leaderboard/leaderboard.module.js.map
+server/dist/leaderboard/leaderboard.service.d.ts
+server/dist/leaderboard/leaderboard.service.js
+server/dist/leaderboard/leaderboard.service.js.map

@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { HelpCircle, Loader2, Trophy } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import FooterLinks from './FooterLinks';
-import type { InfoModalType } from './InfoModal';
+import React, { useEffect, useState } from "react";
+import { HelpCircle, Loader2, Trophy } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+import FooterLinks from "./FooterLinks";
+import { request } from "../utils/request";
+import type { InfoModalType } from "./InfoModal";
 
 interface LeaderboardEntry {
   id: number;
@@ -13,8 +15,8 @@ interface LeaderboardEntry {
 }
 
 interface LeaderboardScreenProps {
-  onNavigate: (tab: 'play' | 'leaderboard') => void;
-  activeTab: 'play' | 'leaderboard';
+  onNavigate: (tab: "play" | "leaderboard") => void;
+  activeTab: "play" | "leaderboard";
   onOpenInfo: (type: InfoModalType) => void;
 }
 
@@ -29,50 +31,63 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchLeaderboard = async () => {
+    let ignore = false;
+    let abortController: AbortController;
+
+    async function fetchLeaderboard() {
+      abortController = new AbortController();
+
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch('/api/leaderboard?limit=20');
-        if (!response.ok) {
-          throw new Error('Failed to load high scores');
+        const leaderboardEntries = await request<LeaderboardEntry[]>(
+          "/api/leaderboard?limit=20",
+          { method: "GET", signal: abortController.signal },
+        );
+        if (!ignore) {
+          setEntries(leaderboardEntries);
         }
-        const data = (await response.json()) as LeaderboardEntry[];
-        setEntries(data);
       } catch (err: unknown) {
         console.error(err);
-        setError(
-          err instanceof Error ? err.message : 'Error connecting to database',
-        );
-        // Fallback mock scores to keep the UI beautiful
-        setEntries([
-          { id: 1, name: 'Karma Queen', score: 450, createdAt: new Date().toISOString(), sample: true },
-          { id: 2, name: 'Bath Bomb Bobby', score: 375, createdAt: new Date().toISOString(), sample: true },
-          { id: 3, name: 'Lavender Larry', score: 300, createdAt: new Date().toISOString(), sample: true },
-          { id: 4, name: 'Rose Petal', score: 250, createdAt: new Date().toISOString(), sample: true },
-          { id: 5, name: 'Minty Mike', score: 175, createdAt: new Date().toISOString(), sample: true },
-        ]);
+
+        if (!ignore) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unknown error occurred while fetching leaderboard data",
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+        }
       }
-    };
+    }
 
     fetchLeaderboard();
+
+    return () => {
+      ignore = true;
+      abortController.abort();
+    };
   }, []);
 
   const toggleLanguage = () => {
-    const nextLang = i18n.language === 'en' ? 'ru' : 'en';
+    const nextLang = i18n.language === "en" ? "ru" : "en";
     i18n.changeLanguage(nextLang);
   };
 
   const formatDate = (isoString: string) => {
     try {
       const date = new Date(isoString);
-      return date.toLocaleDateString(i18n.language === 'ru' ? 'ru-RU' : 'en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
+      return date.toLocaleDateString(
+        i18n.language === "ru" ? "ru-RU" : "en-US",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        },
+      );
     } catch {
       return isoString;
     }
@@ -82,46 +97,54 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
     <div className="flex flex-col min-h-screen bg-white">
       {/* Navigation Header */}
       <header className="flex items-center justify-between px-8 py-6 border-b border-lush-gray-border">
-        <div 
+        <div
           className="text-2xl font-cabinet tracking-tight cursor-pointer text-lush-black"
-          onClick={() => onNavigate('play')}
+          onClick={() => onNavigate("play")}
         >
-          {t('app.title')}
+          {t("app.title")}
         </div>
-        
+
         <nav className="flex items-center space-x-8 font-medium text-sm tracking-wide">
-          <button 
-            onClick={() => onNavigate('play')}
+          <button
+            onClick={() => onNavigate("play")}
             className={`pb-1 transition-colors border-b-2 hover:text-lush-black cursor-pointer ${
-              activeTab === 'play' ? 'border-lush-black text-lush-black' : 'border-transparent text-gray-500'
+              activeTab === "play"
+                ? "border-lush-black text-lush-black"
+                : "border-transparent text-gray-500"
             }`}
           >
-            {t('nav.play')}
+            {t("nav.play")}
           </button>
-          <button 
-            onClick={() => onNavigate('leaderboard')}
+          <button
+            onClick={() => onNavigate("leaderboard")}
             className={`pb-1 transition-colors border-b-2 hover:text-lush-black cursor-pointer ${
-              activeTab === 'leaderboard' ? 'border-lush-black text-lush-black' : 'border-transparent text-gray-500'
+              activeTab === "leaderboard"
+                ? "border-lush-black text-lush-black"
+                : "border-transparent text-gray-500"
             }`}
           >
-            {t('nav.leaderboard')}
+            {t("nav.leaderboard")}
           </button>
         </nav>
 
         <div className="flex items-center space-x-4 text-lush-black">
           {/* Language Toggle Button */}
-          <button 
+          <button
             onClick={toggleLanguage}
             className="hover:bg-neutral-100 border border-lush-black px-2 py-0.5 rounded text-[10px] tracking-widest font-semibold uppercase transition-colors cursor-pointer"
-            title={i18n.language === 'en' ? 'Switch to Russian' : 'Переключить на английский'}
+            title={
+              i18n.language === "en"
+                ? "Switch to Russian"
+                : "Переключить на английский"
+            }
           >
-            {i18n.language === 'en' ? 'RU' : 'EN'}
+            {i18n.language === "en" ? "RU" : "EN"}
           </button>
 
           <button
-            title={t('help.title')}
+            title={t("help.title")}
             className="hover:opacity-70 transition-opacity cursor-pointer"
-            onClick={() => onOpenInfo('help')}
+            onClick={() => onOpenInfo("help")}
           >
             <HelpCircle size={22} strokeWidth={1.5} />
           </button>
@@ -135,16 +158,16 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
             <Trophy className="text-lush-black" size={32} strokeWidth={1.5} />
           </div>
           <h1 className="text-4xl md:text-5xl font-cabinet tracking-tight text-lush-black">
-            {t('leaderboard.title')}
+            {t("leaderboard.title")}
           </h1>
           <p className="text-gray-500 text-sm tracking-wide mt-2">
-            {t('leaderboard.desc')}
+            {t("leaderboard.desc")}
           </p>
         </div>
 
         {error && (
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded text-center text-sm mb-6 font-light">
-            {t('leaderboard.offline')}
+            {t("leaderboard.offline")}
           </div>
         )}
 
@@ -152,20 +175,28 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 space-y-4">
               <Loader2 className="animate-spin text-lush-black" size={40} />
-              <span className="text-sm font-medium text-gray-500 tracking-widest uppercase">{t('leaderboard.loading')}</span>
+              <span className="text-sm font-medium text-gray-500 tracking-widest uppercase">
+                {t("leaderboard.loading")}
+              </span>
             </div>
-          ) : entries.length === 0 ? (
+          ) : (entries.length === 0 && !error) ? (
             <div className="text-center py-20 text-gray-500 font-light">
-              {t('leaderboard.empty')}
+              {t("leaderboard.empty")}
             </div>
-          ) : (
+          ) : (!error) ? (
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-lush-black text-white text-xs uppercase tracking-widest font-semibold border-b border-lush-black">
-                  <th className="px-6 py-4 text-center w-20">{t('leaderboard.rank')}</th>
-                  <th className="px-6 py-4">{t('leaderboard.name')}</th>
-                  <th className="px-6 py-4 text-right pr-12">{t('leaderboard.score')}</th>
-                  <th className="px-6 py-4 text-right">{t('leaderboard.date')}</th>
+                  <th className="px-6 py-4 text-center w-20">
+                    {t("leaderboard.rank")}
+                  </th>
+                  <th className="px-6 py-4">{t("leaderboard.name")}</th>
+                  <th className="px-6 py-4 text-right pr-12">
+                    {t("leaderboard.score")}
+                  </th>
+                  <th className="px-6 py-4 text-right">
+                    {t("leaderboard.date")}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-lush-gray-border">
@@ -173,10 +204,11 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                   const rank = index + 1;
                   let rankStyle = "text-gray-600 font-medium";
                   let rowStyle = "hover:bg-neutral-50 transition-colors";
-                  
+
                   if (rank === 1) {
                     rankStyle = "text-yellow-600 font-bold text-lg";
-                    rowStyle = "bg-yellow-50/30 hover:bg-yellow-50/50 transition-colors";
+                    rowStyle =
+                      "bg-yellow-50/30 hover:bg-yellow-50/50 transition-colors";
                   } else if (rank === 2) {
                     rankStyle = "text-gray-500 font-bold";
                   } else if (rank === 3) {
@@ -192,7 +224,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                         {entry.name}
                         {entry.sample && (
                           <span className="ml-2 rounded border border-yellow-300 bg-yellow-50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-yellow-800">
-                            {t('leaderboard.sample')}
+                            {t("leaderboard.sample")}
                           </span>
                         )}
                       </td>
@@ -207,7 +239,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 })}
               </tbody>
             </table>
-          )}
+          ) : null}
         </div>
       </main>
 

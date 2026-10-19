@@ -81,7 +81,7 @@ const resources = {
       // Leaderboard Screen
       'leaderboard.title': 'Global High Scores',
       'leaderboard.desc': 'The sharpest noses in the community.',
-      'leaderboard.offline': 'Leaderboard unavailable. Showing sample scores, not live global rankings.',
+      'leaderboard.offline': 'Leaderboard unavailable.',
       'leaderboard.sample': 'Sample',
       'leaderboard.loading': 'Fetching olfactory ranks...',
       'leaderboard.empty': 'No scores recorded yet. Be the first to enter your name!',
@@ -214,7 +214,7 @@ const resources = {
       // Leaderboard Screen
       'leaderboard.title': 'Мировая таблица рекордов',
       'leaderboard.desc': 'Самое острое обоняние в сообществе.',
-      'leaderboard.offline': 'Таблица рекордов недоступна. Показаны примерные результаты, а не живой мировой рейтинг.',
+      'leaderboard.offline': 'Таблица рекордов недоступна.',
       'leaderboard.sample': 'Пример',
       'leaderboard.loading': 'Загрузка таблицы рекордов...',
       'leaderboard.empty': 'Рекордов пока нет. Станьте первым!',
