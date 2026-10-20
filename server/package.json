@@ -1,4 +1,5 @@
 {
+  "packageManager": "pnpm@12.14.0",
   "name": "server",
   "version": "0.0.1",
   "description": "",
@@ -31,13 +32,6 @@
     "rxjs": "^7.8.1",
     "socks-proxy-agent": "^10.1.0",
     "typeorm": "0.3.31"
-  },
-  "overrides": {
-    "multer": "2.4.0",
-    "ip-address": "10.7.2",
-    "brace-expansion": "2.1.7",
-    "qs": "6.16.0",
-    "body-parser": "2.3.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -74,7 +68,7 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": { "allowJs": true } }]
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
@@ -82,7 +76,7 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "transformIgnorePatterns": [
-      "/node_modules/(?!(socks-proxy-agent|agent-base|socks)/)"
+      "/node_modules/(?!(?:\\.pnpm/)?(?:socks-proxy-agent|agent-base|socks)(?:@|/))"
     ]
   }
 }

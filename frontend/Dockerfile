@@ -1,14 +1,12 @@
 # Stage 1: Build React/Vite
 FROM node:24-slim AS builder
+RUN npm install --global pnpm@12.14.0
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci \
-    --maxsockets=1 \
-    --fetch-retries=3 \
-    --fetch-retry-mintimeout=1000 \
-    --fetch-retry-maxtimeout=10000
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile \
+    --network-concurrency=1
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # Stage 2: Serve with Caddy
 FROM caddy:alpine

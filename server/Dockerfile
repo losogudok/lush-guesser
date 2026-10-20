@@ -1,25 +1,23 @@
 # Stage 1: Build NestJS
 FROM node:24-slim AS builder
+RUN npm install --global pnpm@12.14.0
 
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci \
-    --maxsockets=1 \
-    --fetch-retries=3 \
-    --fetch-retry-mintimeout=1000 \
-    --fetch-retry-maxtimeout=10000
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile \
+    --network-concurrency=1
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # Prune devDependencies to keep production image small
-RUN npm prune --production
+RUN pnpm prune --prod
 
 # Stage 2: Run Production
 FROM node:24-slim
 WORKDIR /app
 
 # Copy package info and compiled resources from builder stage
-COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 

@@ -41,14 +41,14 @@ If applicable, use RGR to complete the task.
 Before committing, run:
 
 ```bash
-npm run validate:catalog --prefix frontend
-npm run lint --prefix frontend
-npm run build --prefix frontend
-npm run lint --prefix server
-npm test --prefix server -- --passWithNoTests
-npm run test:e2e --prefix server
-npm run build --prefix server
-npm run test:e2e
+pnpm --dir frontend run validate:catalog
+pnpm --dir frontend run lint
+pnpm --dir frontend run build
+pnpm --dir server run lint
+pnpm --dir server test --passWithNoTests
+pnpm --dir server run test:e2e
+pnpm --dir server run build
+pnpm run test:e2e
 ```
 
 If the task cannot reasonably affect one area, you may run a smaller subset

@@ -28,7 +28,7 @@ ARG AGENT_GID=1000
 RUN groupmod -o -g $AGENT_GID node && usermod -o -u $AGENT_UID -g $AGENT_GID -d /home/agent -m -l agent node
 
 # Install OpenCode CLI (run as root before USER agent)
-RUN npm install -g opencode-ai@latest
+RUN npm install -g pnpm@12.14.0 opencode-ai@latest
 
 USER ${AGENT_UID}:${AGENT_GID}
 

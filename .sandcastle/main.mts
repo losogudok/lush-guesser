@@ -17,9 +17,9 @@
 // issues are picked up after each round of merges.
 //
 // Usage:
-//   npx tsx .sandcastle/main.mts
+//   pnpm exec tsx .sandcastle/main.mts
 // Or add to package.json:
-//   "scripts": { "sandcastle": "npx tsx .sandcastle/main.mts" }
+//   "scripts": { "sandcastle": "tsx .sandcastle/main.mts" }
 
 import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
@@ -37,12 +37,12 @@ const planSchema = z.object({
 type PlannedIssue = z.infer<typeof planSchema>["issues"][number];
 
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log(`Usage: npm run sandcastle
+  console.log(`Usage: pnpm run sandcastle
 
 Runs Sandcastle against open GitHub Issues labeled "Sandcastle".
 
 Setup:
-  npm run sandcastle:build-image
+  pnpm run sandcastle:build-image
   cp .sandcastle/.env.example .sandcastle/.env
 
 Environment:
@@ -69,15 +69,15 @@ const TARGET_BRANCH = process.env.SANDCASTLE_TARGET_BRANCH ?? "HEAD";
 const hooks = {
   sandbox: {
     onSandboxReady: [
-      { command: "npm ci" },
-      { command: "npm ci --prefix frontend" },
-      { command: "npm ci --prefix server" },
+      { command: "pnpm install --frozen-lockfile" },
+      { command: "pnpm --dir frontend install --frozen-lockfile" },
+      { command: "pnpm --dir server install --frozen-lockfile" },
     ],
   },
 };
 
 // Copy node_modules from the host into the worktree before each sandbox
-// starts. Avoids a full npm install from scratch; the hook above handles
+// starts. Avoids a full pnpm install from scratch; the hook above handles
 // platform-specific binaries and any packages added since the last copy.
 const copyToWorktree = [
   "node_modules",
@@ -88,7 +88,10 @@ const copyToWorktree = [
 const sandboxProvider = () =>
   docker({
     imageName: IMAGE_NAME,
-    mounts: [{ hostPath: "~/.npm", sandboxPath: "/home/agent/.npm" }],
+    mounts: [{
+      hostPath: "~/.local/share/pnpm/store",
+      sandboxPath: "/home/agent/.local/share/pnpm/store",
+    }],
   });
 
 const agent = () => sandcastle.opencode(MODEL);

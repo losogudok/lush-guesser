@@ -13,7 +13,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm run start:dev --prefix server',
+      command: 'pnpm --dir server run start:dev',
       url: 'http://127.0.0.1:3101/api/leaderboard',
       reuseExistingServer: false,
       env: {
@@ -23,7 +23,7 @@ export default defineConfig({
       },
     },
     {
-      command: 'npm run dev --prefix frontend -- --host 127.0.0.1 --port 5174',
+      command: 'pnpm --dir frontend run dev --host 127.0.0.1 --port 5174',
       url: 'http://127.0.0.1:5174',
       reuseExistingServer: false,
       env: {
@@ -37,7 +37,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         launchOptions: {
-          executablePath: "/usr/bin/chromium",
+          executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
         },
       }
     },

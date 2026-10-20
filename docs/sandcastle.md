@@ -4,10 +4,11 @@ This repo uses Sandcastle to run coding agents in isolated Docker sandboxes.
 
 ## Setup
 
-1. Install root dependencies:
+1. Install pnpm 12.14.0 and root dependencies:
 
 ```bash
-npm ci
+npm install --global pnpm@12.14.0
+pnpm install --frozen-lockfile
 ```
 
 2. Create a local Sandcastle environment file:
@@ -24,7 +25,7 @@ Fill in:
 3. Build the sandbox image:
 
 ```bash
-npm run sandcastle:build-image
+pnpm run sandcastle:build-image
 ```
 
 ## Running Agents
@@ -32,7 +33,7 @@ npm run sandcastle:build-image
 Sandcastle works from GitHub Issues labeled `Sandcastle`.
 
 ```bash
-npm run sandcastle
+pnpm run sandcastle
 ```
 
 Optional environment variables:
@@ -47,17 +48,21 @@ Optional environment variables:
 Agents should run this full verification set before committing unless a specific sandbox blocker prevents it:
 
 ```bash
-npm run validate:catalog --prefix frontend
-npm run lint --prefix frontend
-npm run build --prefix frontend
-npm run lint --prefix server
-npm test --prefix server -- --passWithNoTests
-npm run test:e2e --prefix server
-npm run build --prefix server
-npm run test:e2e
+pnpm --dir frontend run test:catalog
+pnpm --dir frontend run validate:catalog
+pnpm --dir frontend run lint
+pnpm --dir frontend run build
+pnpm --dir server run lint
+pnpm --dir server test --passWithNoTests
+pnpm --dir server run test:e2e
+pnpm --dir server run build
+pnpm run test:e2e
 ```
 
-`npm run test:e2e` at the repo root runs the Playwright smoke test on isolated ports.
+`pnpm run test:e2e` at the repo root runs the Playwright smoke test on isolated ports.
+Install its browser with `pnpm exec playwright install --with-deps chromium`.
+To use an existing Chromium installation locally, set
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable path.
 
 ## Operational Notes
 
