@@ -31,7 +31,8 @@ jobs:
 
   quality:
     name: Test, lint, and build
-    runs-on: ubuntu-latest
+    # This runner includes Chromium's shared libraries; avoid apt downloads for extra fonts.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Check out repository
@@ -104,10 +105,6 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-headless-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright system dependencies
-        timeout-minutes: 5
-        run: pnpm exec playwright install-deps chromium
 
       - name: Install Playwright headless browser
         if: steps.playwright-cache.outputs.cache-hit != 'true'
