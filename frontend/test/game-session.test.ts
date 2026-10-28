@@ -83,6 +83,8 @@ test('scores one correct or incorrect guess per Round', () => {
   assert.equal(incorrect.pointsEarned, 0);
   assert.equal(incorrect.score, 0);
   assert.equal(incorrect.correctAnswerCount, 0);
+  assert.strictEqual(submitGuess(incorrect, currentProduct.id), incorrect);
+  assert.strictEqual(revealNextIngredientClue(incorrect), incorrect);
 });
 
 test('resets each Round and finishes with the final score and correct-answer count', () => {
@@ -126,5 +128,53 @@ test('resets each Round and finishes with the final score and correct-answer cou
   assert.equal(session.score, 450);
   assert.equal(session.correctAnswerCount, expectedCorrectAnswers);
   assert.equal(session.correctAnswerCount, 5);
+  assert.strictEqual(advanceRound(session), session);
+  assert.strictEqual(submitGuess(session, session.rounds[0].product.id), session);
+  assert.strictEqual(revealNextIngredientClue(session), session);
+});
+
+test('uses every available Product when the catalog has fewer than ten Products', () => {
+  const products = createProducts(3);
+  const session = createGameSession(products, sequenceRandom(0.2));
+
+  assert.equal(session.rounds.length, products.length);
+  assert.deepEqual(
+    session.rounds.map((round) => round.product.id).sort(),
+    products.map((product) => product.id).sort(),
+  );
+  for (const round of session.rounds) {
+    assert.deepEqual(
+      [...round.answerChoices].sort(),
+      products.map((product) => product.id).sort(),
+    );
+  }
+});
+
+for (const clueCount of [2, 3]) {
+  test(`stops revealing after a Product's ${clueCount} Ingredient Clues`, () => {
+    const products = createProducts(1);
+    products[0].ingredients = products[0].ingredients.slice(0, clueCount);
+    let session = createGameSession(products, sequenceRandom(0.2));
+
+    for (let revealedCount = 1; revealedCount < clueCount; revealedCount += 1) {
+      session = revealNextIngredientClue(session);
+    }
+
+    assert.equal(session.revealedIngredientClueCount, clueCount);
+    assert.equal(session.currentPointValue, 100 - (clueCount - 1) * 25);
+    assert.strictEqual(revealNextIngredientClue(session), session);
+    session = submitGuess(session, products[0].id);
+    assert.equal(isFinalRound(session), true);
+    assert.equal(advanceRound(session).status, 'finished');
+  });
+}
+
+test('ignores actions when an empty catalog has no current Round', () => {
+  const session = createGameSession([], sequenceRandom(0.2));
+
+  assert.deepEqual(session.rounds, []);
+  assert.equal(isFinalRound(session), false);
+  assert.strictEqual(revealNextIngredientClue(session), session);
+  assert.strictEqual(submitGuess(session, 'unknown-product'), session);
   assert.strictEqual(advanceRound(session), session);
 });

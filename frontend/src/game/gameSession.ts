@@ -26,15 +26,20 @@ export interface GameSession {
   readonly status: 'playing' | 'finished';
 }
 
+const createInitialRoundState = () => ({
+  revealedIngredientClueCount: 1,
+  currentPointValue: INITIAL_POINT_VALUE,
+  pointsEarned: null,
+  guessCorrect: null,
+  selectedProductId: null,
+});
+
 const shuffle = <T>(values: readonly T[], random: RandomSource): T[] => {
   const shuffled = [...values];
 
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [
-      shuffled[swapIndex],
-      shuffled[index],
-    ];
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
   }
 
   return shuffled;
@@ -59,10 +64,7 @@ export const createGameSession = (
   products: readonly Product[],
   random: RandomSource,
 ): GameSession => {
-  const playlist = shuffle(products, random).slice(
-    0,
-    GAME_SESSION_ROUND_COUNT,
-  );
+  const playlist = shuffle(products, random).slice(0, GAME_SESSION_ROUND_COUNT);
   const rounds = playlist.map((product) => ({
     product,
     answerChoices: createAnswerChoices(product, products, random),
@@ -71,20 +73,14 @@ export const createGameSession = (
   return {
     rounds,
     currentRoundIndex: 0,
-    revealedIngredientClueCount: 1,
-    currentPointValue: INITIAL_POINT_VALUE,
-    pointsEarned: null,
+    ...createInitialRoundState(),
     score: 0,
     correctAnswerCount: 0,
-    guessCorrect: null,
-    selectedProductId: null,
     status: 'playing',
   };
 };
 
-export const revealNextIngredientClue = (
-  session: GameSession,
-): GameSession => {
+export const revealNextIngredientClue = (session: GameSession): GameSession => {
   const currentRound = session.rounds[session.currentRoundIndex];
   if (
     session.status === 'finished' ||
@@ -122,8 +118,7 @@ export const submitGuess = (
     ...session,
     pointsEarned,
     score: session.score + pointsEarned,
-    correctAnswerCount:
-      session.correctAnswerCount + (guessCorrect ? 1 : 0),
+    correctAnswerCount: session.correctAnswerCount + (guessCorrect ? 1 : 0),
     guessCorrect,
     selectedProductId: productId,
   };
@@ -144,10 +139,6 @@ export const advanceRound = (session: GameSession): GameSession => {
   return {
     ...session,
     currentRoundIndex: session.currentRoundIndex + 1,
-    revealedIngredientClueCount: 1,
-    currentPointValue: INITIAL_POINT_VALUE,
-    pointsEarned: null,
-    guessCorrect: null,
-    selectedProductId: null,
+    ...createInitialRoundState(),
   };
 };

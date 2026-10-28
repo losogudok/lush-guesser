@@ -25,7 +25,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   onQuit,
 }) => {
   const { t, i18n } = useTranslation();
-  const currentLang = (i18n.language === 'ru' ? 'ru' : 'en') as 'ru' | 'en';
+  const currentLang: 'ru' | 'en' = i18n.language === 'ru' ? 'ru' : 'en';
 
   const [session, setSession] = useState(() =>
     createGameSession(productCatalog.products, Math.random),
@@ -33,7 +33,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const [shake, setShake] = useState<boolean>(false);
 
   const currentRound = session.rounds[session.currentRoundIndex] ?? null;
-  const currentProduct = currentRound?.product ?? null;
   const guessed = session.guessCorrect !== null;
   const activeWorth = session.pointsEarned ?? session.currentPointValue;
 
@@ -69,12 +68,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     }
   };
 
-  if (!currentProduct || !currentRound) return null;
-
-  // Helper to fetch localized product name by ID
+  if (!currentRound) return null;
+  const currentProduct = currentRound.product;
   const getProductName = (id: string) => {
-    const prod = productCatalog.products.find((p) => p.id === id);
-    return prod ? prod.name[currentLang] : id;
+    const product = productCatalog.products.find((candidate) => candidate.id === id);
+    return product ? product.name[currentLang] : id;
   };
 
   return (
