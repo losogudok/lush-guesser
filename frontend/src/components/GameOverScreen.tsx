@@ -43,7 +43,6 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
 
   const handleSubmitScore = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
 
     try {
       setSubmitting(true);
@@ -52,11 +51,12 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
       const response = await fetch('/api/leaderboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), score }),
+        body: JSON.stringify({ name, score }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit score to global leaderboard');
+        setError(t('gameover.submit_failed'));
+        return;
       }
 
       setSubmitted(true);
@@ -66,11 +66,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
       }, 1000);
     } catch (err: unknown) {
       console.error(err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Server connection failed. Could not save score.',
-      );
+      setError(t('gameover.submit_failed'));
     } finally {
       setSubmitting(false);
     }
@@ -135,15 +131,13 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
                   type="text"
                   placeholder={t('gameover.name_placeholder')}
                   value={name}
-                  onChange={(e) => setName(e.target.value.slice(0, 20))}
-                  maxLength={20}
+                  onChange={(e) => setName(e.target.value)}
                   disabled={submitting}
                   className="flex-1 border-2 border-lush-black px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-lush-black disabled:bg-gray-100 font-semibold uppercase text-lush-black"
-                  required
                 />
                 <button
                   type="submit"
-                  disabled={submitting || !name.trim()}
+                  disabled={submitting}
                   className="bg-lush-black text-white hover:bg-neutral-800 px-6 py-2 text-xs uppercase tracking-widest font-semibold border-2 border-lush-black disabled:bg-gray-400 disabled:border-gray-400 cursor-pointer flex items-center justify-center min-w-[100px]"
                 >
                   {submitting ? (
@@ -153,7 +147,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
                   )}
                 </button>
               </div>
-              {error && <p className="text-red-500 text-xs text-left font-light mt-1">{error}</p>}
+              {error && <p role="alert" className="text-red-500 text-xs text-left font-light mt-1">{error}</p>}
             </form>
           )}
         </div>

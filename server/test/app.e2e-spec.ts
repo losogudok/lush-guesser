@@ -61,13 +61,19 @@ describe('AppController (e2e)', () => {
       .expect([]);
   });
 
-  it('/api/leaderboard (POST)', async () => {
+  it('/api/leaderboard (POST) creates one normalized Leaderboard Entry visible in ranking', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/leaderboard')
-      .send({ name: 'Ada', score: 42 })
+      .send({ name: '  Ada  ', score: 75 })
       .expect(201);
 
-    expect(response.body).toMatchObject({ name: 'Ada', score: 42 });
+    expect(response.body).toMatchObject({ name: 'Ada', score: 75 });
+    const ranking = await request(app.getHttpServer())
+      .get('/api/leaderboard')
+      .expect(200);
+    const entries = ranking.body as Array<{ name: string; score: number }>;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ name: 'Ada', score: 75 });
   });
 
   it('/api/leaderboard rejects invalid limits', async () => {
@@ -82,31 +88,31 @@ describe('AppController (e2e)', () => {
       .expect(400);
   });
 
-  it('/api/leaderboard rejects invalid score submissions', async () => {
-    await request(app.getHttpServer())
-      .post('/api/leaderboard')
-      .send({ name: '', score: 42 })
-      .expect(400);
+  it('/api/leaderboard rejects malformed and impossible submissions without persistence', async () => {
+    const invalidSubmissions: Array<Record<string, unknown>> = [
+      { name: '', score: 100 },
+      { name: '   ', score: 100 },
+      { name: 'This Name Is Longer Than Twenty Characters', score: 100 },
+      { name: 42, score: 100 },
+      { name: 'Ada', score: '100' },
+      { name: 'Ada' },
+      { name: 'Ada', score: -25 },
+      { name: 'Ada', score: 25.5 },
+      { name: 'Ada', score: 42 },
+      { name: 'Ada', score: 1025 },
+    ];
+
+    for (const submission of invalidSubmissions) {
+      await request(app.getHttpServer())
+        .post('/api/leaderboard')
+        .send(submission)
+        .expect(400);
+    }
 
     await request(app.getHttpServer())
-      .post('/api/leaderboard')
-      .send({ name: 'Ada' })
-      .expect(400);
-
-    await request(app.getHttpServer())
-      .post('/api/leaderboard')
-      .send({ name: 'Ada', score: -1 })
-      .expect(400);
-  });
-
-  it('/api/leaderboard truncates long display names', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/api/leaderboard')
-      .send({ name: 'This Name Is Longer Than Twenty Characters', score: 12 })
-      .expect(201);
-
-    const body = response.body as { name: string };
-    expect(body.name).toBe('This Name Is Longer');
+      .get('/api/leaderboard')
+      .expect(200)
+      .expect([]);
   });
 
   it('/webhook rejects updates without the configured Telegram secret', async () => {
