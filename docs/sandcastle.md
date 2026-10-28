@@ -11,10 +11,15 @@ npm install --global pnpm@12.14.0
 pnpm install --frozen-lockfile
 ```
 
+Use Node 24 and a running Docker daemon. Sandcastle installs the root, frontend,
+and server dependencies inside each sandbox with frozen lockfiles, sharing the
+mounted pnpm store. Host `node_modules` directories are not copied into sandboxes.
+
 2. Create a local Sandcastle environment file:
 
 ```bash
 cp .sandcastle/.env.example .sandcastle/.env
+chmod 600 .sandcastle/.env
 ```
 
 Fill in:
@@ -28,9 +33,33 @@ Fill in:
 pnpm run sandcastle:build-image
 ```
 
+The image includes pnpm, OpenCode, GitHub CLI, native build tools, and Playwright
+Chromium with its system libraries. Its Playwright version must match the root
+`pnpm-lock.yaml`; update `PLAYWRIGHT_VERSION` in `.sandcastle/Dockerfile` when
+upgrading Playwright, then rebuild the image.
+
+4. Verify setup without invoking an AI model or changing GitHub issues:
+
+```bash
+pnpm run sandcastle:check
+```
+
+This checks credential presence, Docker access, image tooling, GitHub issue read
+access using the sandbox token, and an actual Chromium launch as the host UID.
+It does not test model authentication or GitHub issue write permissions.
+
 ## Running Agents
 
-Sandcastle works from GitHub Issues labeled `Sandcastle`.
+Sandcastle selects unassigned GitHub Issues labeled `ready-for-agent`, following
+`docs/agents/issue-tracker.md`. The planner must verify that blocking issues are
+closed and exclude issues with conflicting triage labels. If every candidate is
+blocked, it exits without selecting work.
+
+The runner plans work, implements and reviews each selected issue in a separate
+branch, then merges completed branches into the current local branch and closes
+their GitHub issues. Start from a clean worktree on the branch where you want the
+results. Planning and merging also use temporary worktrees so their dependency
+installs do not change the host checkout. It does not push or deploy changes.
 
 ```bash
 pnpm run sandcastle
@@ -41,7 +70,8 @@ Optional environment variables:
 - `SANDCASTLE_MAX_ITERATIONS=1` controls plan/execute/merge loops
 - `SANDCASTLE_MODEL=opencode/big-pickle` selects the OpenCode model string
 - `SANDCASTLE_IMAGE_NAME=lush-guesser-sandcastle` selects the local Docker image
-- `SANDCASTLE_TARGET_BRANCH=main` sets the diff base for reviewer prompts
+- `SANDCASTLE_TARGET_BRANCH=main` overrides the reviewer diff base; by default it
+  uses the host's starting HEAD commit, resolved before issue branches are created
 
 ## Verification Commands
 

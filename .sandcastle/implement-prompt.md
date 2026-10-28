@@ -41,6 +41,7 @@ If applicable, use RGR to complete the task.
 Before committing, run:
 
 ```bash
+pnpm --dir frontend run test:catalog
 pnpm --dir frontend run validate:catalog
 pnpm --dir frontend run lint
 pnpm --dir frontend run build

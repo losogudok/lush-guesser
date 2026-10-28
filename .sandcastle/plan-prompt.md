@@ -4,11 +4,16 @@ Here are the open issues in the repo:
 
 <issues-json>
 
-!`gh issue list --state open --label Sandcastle --limit 100 --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`
+!`gh issue list --state open --label ready-for-agent --limit 100 --json number,title,body,labels,comments,assignees --jq '[.[] | select(.assignees | length == 0) | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`
 
 </issues-json>
 
-The list above has already been filtered to issues ready for work.
+The list above contains unassigned candidates with the canonical `ready-for-agent`
+label. Read `docs/agents/issue-tracker.md` and verify their dependencies before
+selecting work. Use `gh` to check native GitHub blocking dependencies and any
+`Blocked by: #<number>` references, including issues outside this list. An issue
+is ready only when every blocking issue is closed. Exclude candidates also
+labeled `needs-triage`, `needs-info`, `ready-for-human`, or `wontfix`.
 
 # TASK
 
@@ -32,6 +37,6 @@ Output your plan as a JSON object wrapped in `<plan>` tags:
 {"issues": [{"id": "42", "title": "Fix auth bug", "branch": "sandcastle/issue-42"}]}
 </plan>
 
-Include only unblocked issues. If every issue is blocked, include the single highest-priority candidate (the one with the fewest or weakest dependencies).
+Include only unblocked issues. If every issue is blocked, output an empty list.
 
 Always emit the `<plan>` tags, even when there is nothing to do. If there are no issues to work on at all, output `<plan>{"issues": []}</plan>` so the run can exit cleanly.

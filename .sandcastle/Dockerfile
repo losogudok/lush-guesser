@@ -27,8 +27,15 @@ ARG AGENT_GID=1000
 # Rename the base image's "node" user to "agent" and align UID/GID.
 RUN groupmod -o -g $AGENT_GID node && usermod -o -u $AGENT_UID -g $AGENT_GID -d /home/agent -m -l agent node
 
-# Install OpenCode CLI (run as root before USER agent)
-RUN npm install -g pnpm@12.14.0 opencode-ai@latest
+# Keep this version aligned with the root pnpm-lock.yaml.
+ARG PLAYWRIGHT_VERSION=1.64.1
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+
+# Install the agent, package manager, and browser tooling before dropping root.
+RUN npm install -g pnpm@12.14.0 opencode-ai@latest @playwright/test@${PLAYWRIGHT_VERSION} \
+  && playwright install --with-deps chromium \
+  && chmod -R a+rX /opt/playwright \
+  && rm -rf /var/lib/apt/lists/* /root/.npm
 
 USER ${AGENT_UID}:${AGENT_GID}
 

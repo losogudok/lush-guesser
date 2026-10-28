@@ -1,7 +1,7 @@
 // Parallel Planner with Review — Sandcastle orchestration loop for Lush Guesser
 //
 // This template drives a multi-phase workflow:
-//   Phase 1 (Plan):             An opus agent analyzes open issues, builds a
+//   Phase 1 (Plan):             An agent analyzes open issues, builds a
 //                               dependency graph, and outputs a <plan> JSON
 //                               listing unblocked issues with branch names.
 //   Phase 2 (Execute + Review): For each issue, a sandbox is created via
@@ -24,6 +24,7 @@
 import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { z } from "zod";
+import { execFileSync } from "node:child_process";
 
 // The planner emits its plan as JSON inside <plan> tags; Output.object extracts
 // and validates it against this schema. We use Zod here, but any Standard
@@ -39,17 +40,18 @@ type PlannedIssue = z.infer<typeof planSchema>["issues"][number];
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log(`Usage: pnpm run sandcastle
 
-Runs Sandcastle against open GitHub Issues labeled "Sandcastle".
+Runs Sandcastle against unassigned GitHub Issues labeled "ready-for-agent".
 
 Setup:
   pnpm run sandcastle:build-image
   cp .sandcastle/.env.example .sandcastle/.env
+  pnpm run sandcastle:check
 
 Environment:
   SANDCASTLE_MAX_ITERATIONS=1
   SANDCASTLE_MODEL=opencode/big-pickle
   SANDCASTLE_IMAGE_NAME=lush-guesser-sandcastle
-  SANDCASTLE_TARGET_BRANCH=main
+  SANDCASTLE_TARGET_BRANCH=<starting HEAD commit>
 `);
   process.exit(0);
 }
@@ -58,32 +60,28 @@ Environment:
 // Configuration
 // ---------------------------------------------------------------------------
 
-const MAX_ITERATIONS = Number.parseInt(
-  process.env.SANDCASTLE_MAX_ITERATIONS ?? "1",
-  10,
-);
+const MAX_ITERATIONS = Number(process.env.SANDCASTLE_MAX_ITERATIONS ?? "1");
+if (!Number.isSafeInteger(MAX_ITERATIONS) || MAX_ITERATIONS < 1) {
+  throw new Error("SANDCASTLE_MAX_ITERATIONS must be a positive integer");
+}
 const IMAGE_NAME = process.env.SANDCASTLE_IMAGE_NAME ?? "lush-guesser-sandcastle";
 const MODEL = process.env.SANDCASTLE_MODEL ?? "opencode/big-pickle";
-const TARGET_BRANCH = process.env.SANDCASTLE_TARGET_BRANCH ?? "HEAD";
+// Resolve on the host: HEAD inside the review sandbox is the issue branch.
+const TARGET_BRANCH = execFileSync(
+  "git",
+  ["rev-parse", "--verify", `${process.env.SANDCASTLE_TARGET_BRANCH ?? "HEAD"}^{commit}`],
+  { encoding: "utf8" },
+).trim();
 
 const hooks = {
   sandbox: {
     onSandboxReady: [
-      { command: "pnpm install --frozen-lockfile" },
-      { command: "pnpm --dir frontend install --frozen-lockfile" },
-      { command: "pnpm --dir server install --frozen-lockfile" },
+      { command: "pnpm install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store" },
+      { command: "pnpm --dir frontend install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store" },
+      { command: "pnpm --dir server install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store" },
     ],
   },
 };
-
-// Copy node_modules from the host into the worktree before each sandbox
-// starts. Avoids a full pnpm install from scratch; the hook above handles
-// platform-specific binaries and any packages added since the last copy.
-const copyToWorktree = [
-  "node_modules",
-  "frontend/node_modules",
-  "server/node_modules",
-];
 
 const sandboxProvider = () =>
   docker({
@@ -106,7 +104,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
   // Phase 1: Plan
   //
-  // The planning agent (opus, for deeper reasoning) reads the open issue list,
+  // The planning agent reads the open issue list,
   // builds a dependency graph, and selects the issues that can be worked in
   // parallel right now (i.e., no blocking dependencies on other open issues).
   //
@@ -115,11 +113,11 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   const plan = await sandcastle.run({
     hooks,
     sandbox: sandboxProvider(),
+    branchStrategy: { type: "merge-to-head" },
     name: "planner",
     // One iteration is enough: the planner just needs to read and reason,
     // not write code. (Structured output requires maxIterations: 1.)
     maxIterations: 1,
-    // Opus for planning: dependency analysis benefits from deeper reasoning.
     agent: agent(),
     promptFile: "./.sandcastle/plan-prompt.md",
     // Extract and validate the <plan> JSON into a typed object. Throws
@@ -159,7 +157,6 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
         branch: issue.branch,
         sandbox: sandboxProvider(),
         hooks,
-        copyToWorktree,
       });
 
       try {
@@ -251,6 +248,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   await sandcastle.run({
     hooks,
     sandbox: sandboxProvider(),
+    branchStrategy: { type: "merge-to-head" },
     name: "merger",
     maxIterations: 1,
     agent: agent(),
