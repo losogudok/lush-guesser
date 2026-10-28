@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { productCatalog } from '../data/products';
-import type { Product } from '../data/products';
 import { Star, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
@@ -8,22 +7,18 @@ import { useTranslation } from 'react-i18next';
 import { AnswerChoices } from './game/AnswerChoices';
 import { IngredientClueCarousel } from './game/IngredientClueCarousel';
 import { RoundResult } from './game/RoundResult';
-import { GAME_ROUND_COUNT } from '../constants';
+import {
+  advanceRound,
+  createGameSession,
+  isFinalRound,
+  revealNextIngredientClue,
+  submitGuess,
+} from '../game/gameSession';
 
 interface GameScreenProps {
   onGameFinished: (finalScore: number, correctCount: number) => void;
   onQuit: () => void;
 }
-
-const createOptions = (product: Product) => {
-  const distractors = productCatalog.products
-    .filter((p) => p.id !== product.id)
-    .sort(() => 0.5 - Math.random())
-    .slice(0, 3)
-    .map((p) => p.id);
-
-  return [product.id, ...distractors].sort(() => 0.5 - Math.random());
-};
 
 export const GameScreen: React.FC<GameScreenProps> = ({
   onGameFinished,
@@ -32,54 +27,26 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const { t, i18n } = useTranslation();
   const currentLang = (i18n.language === 'ru' ? 'ru' : 'en') as 'ru' | 'en';
 
-  // Game Setup States
-  const [playlist] = useState<Product[]>(() => {
-    const shuffled = [...productCatalog.products].sort(() => 0.5 - Math.random());
-    return shuffled.slice(
-      0,
-      Math.min(GAME_ROUND_COUNT, productCatalog.products.length),
-    );
-  });
-  const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
-  const [totalScore, setTotalScore] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
-
-  // Current Round States
-  const [revealedCount, setRevealedCount] = useState(1); // Starts at 1, max 4
-  const [options, setOptions] = useState<string[]>(() =>
-    playlist[0] ? createOptions(playlist[0]) : [],
+  const [session, setSession] = useState(() =>
+    createGameSession(productCatalog.products, Math.random),
   );
-  const [guessed, setGuessed] = useState<boolean>(false);
-  const [guessCorrect, setGuessCorrect] = useState<boolean | null>(null);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null); // Holds product ID
   const [shake, setShake] = useState<boolean>(false);
 
-  const currentProduct = playlist[currentRoundIndex] ?? null;
-
-  if (!currentProduct) return null;
-
-  // Calculate current worth based on revealed count
-  const currentWorth = 100 - (revealedCount - 1) * 25;
-  const activeWorth = guessed && !guessCorrect ? 0 : currentWorth;
+  const currentRound = session.rounds[session.currentRoundIndex] ?? null;
+  const currentProduct = currentRound?.product ?? null;
+  const guessed = session.guessCorrect !== null;
+  const activeWorth = session.pointsEarned ?? session.currentPointValue;
 
   const handleRevealNext = () => {
-    if (revealedCount < currentProduct.ingredients.length && !guessed) {
-      setRevealedCount((prev) => prev + 1);
-    }
+    setSession(revealNextIngredientClue);
   };
 
   const handleGuess = (optionId: string) => {
-    if (guessed) return; // Only 1 guess allowed per round
-    
-    setSelectedOption(optionId);
-    setGuessed(true);
+    const nextSession = submitGuess(session, optionId);
+    if (nextSession === session) return;
 
-    if (optionId === currentProduct.id) {
-      setGuessCorrect(true);
-      setCorrectCount((prev) => prev + 1);
-      setTotalScore((prev) => prev + currentWorth);
-      
-      // Fire confetti for a correct guess
+    setSession(nextSession);
+    if (nextSession.guessCorrect) {
       confetti({
         particleCount: 80,
         spread: 60,
@@ -87,27 +54,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         colors: ['#00E676', '#EEFF00', '#4CE3E6', '#000000'],
       });
     } else {
-      setGuessCorrect(false);
       setShake(true);
-      // Remove shake class after animation completes
       setTimeout(() => setShake(false), 400);
     }
   };
 
   const handleNextRound = () => {
-    if (currentRoundIndex + 1 < playlist.length) {
-      const nextRoundIndex = currentRoundIndex + 1;
-      setOptions(createOptions(playlist[nextRoundIndex]));
-      setRevealedCount(1);
-      setGuessed(false);
-      setGuessCorrect(null);
-      setSelectedOption(null);
-      setShake(false);
-      setCurrentRoundIndex((prev) => prev + 1);
-    } else {
-      onGameFinished(totalScore, correctCount);
+    const nextSession = advanceRound(session);
+    setSession(nextSession);
+    setShake(false);
+
+    if (nextSession.status === 'finished') {
+      onGameFinished(nextSession.score, nextSession.correctAnswerCount);
     }
   };
+
+  if (!currentProduct || !currentRound) return null;
 
   // Helper to fetch localized product name by ID
   const getProductName = (id: string) => {
@@ -128,11 +90,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         </button>
         
         <div className="text-xl font-cabinet tracking-wide text-lush-black">
-          {t('game.round', { round: currentRoundIndex + 1 })}
+          {t('game.round', { round: session.currentRoundIndex + 1 })}
         </div>
 
         <div className="border-2 border-lush-black px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-white text-lush-black">
-          {t('game.score', { score: totalScore })}
+          {t('game.score', { score: session.score })}
         </div>
       </header>
 
@@ -151,7 +113,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         <IngredientClueCarousel
           key={currentProduct.id}
           product={currentProduct}
-          revealedCount={revealedCount}
+          revealedCount={session.revealedIngredientClueCount}
           guessed={guessed}
           t={t}
           onRevealNext={handleRevealNext}
@@ -173,7 +135,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         <div className="w-full max-w-xl">
           {!guessed ? (
             <AnswerChoices
-              options={options}
+              options={currentRound.answerChoices}
               shake={shake}
               getProductName={getProductName}
               onGuess={handleGuess}
@@ -182,10 +144,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             <RoundResult
               product={currentProduct}
               currentLang={currentLang}
-              currentWorth={currentWorth}
-              guessCorrect={guessCorrect}
-              selectedOption={selectedOption}
-              isFinalRound={currentRoundIndex + 1 === playlist.length}
+              pointsEarned={session.pointsEarned ?? 0}
+              guessCorrect={session.guessCorrect}
+              selectedOption={session.selectedProductId}
+              isFinalRound={isFinalRound(session)}
               t={t}
               getProductName={getProductName}
               onNextRound={handleNextRound}

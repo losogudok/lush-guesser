@@ -6,7 +6,7 @@ import GameOverScreen from './components/GameOverScreen';
 import LeaderboardScreen from './components/LeaderboardScreen';
 import InfoModal from './components/InfoModal';
 import type { InfoModalType } from './components/InfoModal';
-import { GAME_ROUND_COUNT } from './constants';
+import { GAME_SESSION_ROUND_COUNT } from './game/gameSession';
 
 type ScreenState = 'welcome' | 'game' | 'gameover' | 'leaderboard';
 
@@ -77,7 +77,7 @@ function App() {
         <GameOverScreen
           score={finalScore}
           correctAnswers={correctAnswers}
-          totalRounds={GAME_ROUND_COUNT}
+          totalRounds={GAME_SESSION_ROUND_COUNT}
           onPlayAgain={handlePlayAgain}
           onReturnHome={handleReturnHome}
           onNavigateToLeaderboard={handleNavigateToLeaderboard}

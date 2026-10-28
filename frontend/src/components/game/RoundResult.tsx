@@ -8,7 +8,7 @@ type Translate = (key: string, options?: Record<string, unknown>) => string;
 interface RoundResultProps {
   product: Product;
   currentLang: 'ru' | 'en';
-  currentWorth: number;
+  pointsEarned: number;
   guessCorrect: boolean | null;
   selectedOption: string | null;
   isFinalRound: boolean;
@@ -20,7 +20,7 @@ interface RoundResultProps {
 export const RoundResult: React.FC<RoundResultProps> = ({
   product,
   currentLang,
-  currentWorth,
+  pointsEarned,
   guessCorrect,
   selectedOption,
   isFinalRound,
@@ -39,7 +39,7 @@ export const RoundResult: React.FC<RoundResultProps> = ({
       </span>
       <span className="text-xs text-gray-400 font-light">
         {guessCorrect
-          ? t('game.gained_points', { points: currentWorth })
+          ? t('game.gained_points', { points: pointsEarned })
           : t('game.gained_zero')}
       </span>
     </div>

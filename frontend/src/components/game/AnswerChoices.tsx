@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface AnswerChoicesProps {
-  options: string[];
+  options: readonly string[];
   shake: boolean;
   getProductName: (id: string) => string;
   onGuess: (optionId: string) => void;

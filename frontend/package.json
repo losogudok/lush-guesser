@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:catalog": "tsx --test test/product-catalog.test.ts",
+    "test:game-session": "tsx --test test/game-session.test.ts",
     "validate:catalog": "tsx scripts/validate-catalog.ts",
     "preview": "vite preview"
   },

@@ -64,6 +64,10 @@ jobs:
         working-directory: frontend
         run: pnpm run test:catalog
 
+      - name: Test Game Session rules
+        working-directory: frontend
+        run: pnpm run test:game-session
+
       - name: Validate product catalog
         working-directory: frontend
         run: pnpm run validate:catalog
