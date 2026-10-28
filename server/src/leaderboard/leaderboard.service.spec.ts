@@ -83,19 +83,30 @@ describe('LeaderboardService', () => {
   );
 
   it('ranks by score, then creation date and insertion order for deterministic ties', async () => {
-    await service.addScore('First tied Player', 100);
+    const later = await service.addScore('Later tied Player', 100);
     await service.addScore('Highest Player', 300);
-    await service.addScore('Second tied Player', 100);
+    const first = await service.addScore('First tied Player', 100);
+    const second = await service.addScore('Second tied Player', 100);
     await service.addScore('Zero Player', 0);
+
+    const repository = dataSource.getRepository(LeaderboardEntry);
+    await repository.update([first.id, second.id], {
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+    });
+    await repository.update(later.id, {
+      createdAt: new Date('2026-01-02T00:00:00Z'),
+    });
 
     const ranked = await service.getTopScores();
     expect(ranked.map((entry) => entry.name)).toEqual([
       'Highest Player',
       'First tied Player',
       'Second tied Player',
+      'Later tied Player',
       'Zero Player',
     ]);
-    expect((await service.getTopScores(2)).map((entry) => entry.name)).toEqual([
+    const topTwo = await service.getTopScores(2);
+    expect(topTwo.map((entry) => entry.name)).toEqual([
       'Highest Player',
       'First tied Player',
     ]);

@@ -71,9 +71,9 @@ describe('AppController (e2e)', () => {
     const ranking = await request(app.getHttpServer())
       .get('/api/leaderboard')
       .expect(200);
-    const entries = ranking.body as Array<{ name: string; score: number }>;
-    expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ name: 'Ada', score: 75 });
+    expect(ranking.body).toEqual([
+      expect.objectContaining({ name: 'Ada', score: 75 }),
+    ]);
   });
 
   it('/api/leaderboard rejects invalid limits', async () => {

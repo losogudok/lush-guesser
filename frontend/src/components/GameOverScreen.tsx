@@ -41,8 +41,8 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
     descKey = "tier.enthusiast.desc";
   }
 
-  const handleSubmitScore = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmitScore = async (event: React.FormEvent) => {
+    event.preventDefault();
 
     try {
       setSubmitting(true);
@@ -60,7 +60,6 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
       }
 
       setSubmitted(true);
-      // Wait a moment and navigate to leaderboard
       setTimeout(() => {
         onNavigateToLeaderboard();
       }, 1000);
@@ -147,7 +146,14 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
                   )}
                 </button>
               </div>
-              {error && <p role="alert" className="text-red-500 text-xs text-left font-light mt-1">{error}</p>}
+              {error && (
+                <p
+                  role="alert"
+                  className="text-red-500 text-xs text-left font-light mt-1"
+                >
+                  {error}
+                </p>
+              )}
             </form>
           )}
         </div>

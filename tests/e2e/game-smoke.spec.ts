@@ -57,9 +57,34 @@ test('Player sees a clear submission failure without a false success state', asy
     .fill('This Player Name Is Far Too Long');
   await page.getByRole('button', { name: 'Submit' }).click();
 
-  await expect(
-    page.getByText('Could not save your score. Check your display name and try again.'),
-  ).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Could not save your score. Check your display name and try again.',
+  );
   await expect(page.getByText('✓ Score saved to leaderboard!')).toBeHidden();
   await expect(page.getByText('Final Score')).toBeVisible();
+
+  const displayName = `Retry${Date.now().toString().slice(-6)}`;
+  await page.getByPlaceholder('Enter name (max 20 chars)').fill(displayName);
+  await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Submit' }).click();
+  await expect(page.getByRole('alert')).toBeHidden();
+  await expect(page.getByText('Global High Scores')).toBeVisible();
+  await expect(page.getByRole('cell', { name: displayName })).toBeVisible();
+});
+
+test('Player sees a clear submission failure when the connection fails', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Start Game' }).click();
+  await completeGameSession(page);
+
+  await page.route('**/api/leaderboard', (route) => route.abort('connectionfailed'));
+  await page.getByPlaceholder('Enter name (max 20 chars)').fill('Ada');
+  await page.getByRole('button', { name: 'Submit' }).click();
+
+  await expect(page.getByRole('alert')).toHaveText(
+    'Could not save your score. Check your display name and try again.',
+  );
+  await expect(page.getByText('✓ Score saved to leaderboard!')).toBeHidden();
+  await expect(page.getByText('Final Score')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();
 });
