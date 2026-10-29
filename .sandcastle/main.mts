@@ -105,6 +105,11 @@ async function runCycle(iteration: number): Promise<"empty" | "idle" | "progress
   // Keep GitHub read failures outside Sandcastle's prompt expansion and sandbox.
   const issuesJson = readPlanningIssues();
   stop.signal.throwIfAborted();
+  // Eligibility can change between the queue check and this snapshot.
+  if (JSON.parse(issuesJson).length === 0) {
+    console.log("No eligible issues. Skipping planner.");
+    return "empty";
+  }
   const plan = await sandcastle.run({
     signal: stop.signal,
     hooks,

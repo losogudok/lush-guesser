@@ -163,10 +163,17 @@ input remain paused until a human restores their eligibility.
 
 This uses polling rather than GitHub webhooks. New ready issues are discovered
 within the polling interval while idle, or after the current batch finishes.
-When the labeled queue is empty, polling uses only a GitHub CLI read and does not
-invoke a model. If candidates exist but all are blocked, the planner rechecks them
-at the polling interval. Normal successful batches are followed immediately by
-another queue check so newly unblocked issues can run.
+Before invoking a model, both one-shot and continuous runs check eligibility
+through the GitHub CLI. This includes native GitHub blocking dependencies and
+explicit `Blocked by: #<number>` declarations or `## Blocked by` lists in issue
+bodies. References may also use `owner/repo#number` or GitHub issue URLs.
+If the queue is empty or every candidate has an open blocker, no planner or
+sandbox starts. Continuous mode checks again at the polling interval; one-shot
+mode exits. Blocker states are refreshed each poll, so closing a blocker allows
+the next check to start work. Failed dependency reads never invoke a model.
+The planner still checks dependencies implied by requirements and overlapping
+changes. Normal successful batches are followed immediately by another queue
+check so newly unblocked issues can run.
 
 Stop with Ctrl+C (SIGINT); SIGTERM is also supported. Cancellation propagates to
 active agents and does not request clarification or relabel an issue. Temporary
