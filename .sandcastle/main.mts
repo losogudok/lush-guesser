@@ -26,7 +26,7 @@ import { z } from "zod";
 import { execFileSync } from "node:child_process";
 import { agents, hooks, sandboxProvider } from "./runtime.mts";
 import { runIssuePipeline } from "./issue-pipeline.mts";
-import { assertExpectedBranch, hasReadyIssues, loopOptions, parallelIssueLimit, runLoop } from "./runner-loop.mts";
+import { assertExpectedBranch, hasReadyIssues, loopOptions, parallelIssueLimit, readPlanningIssues, runLoop } from "./runner-loop.mts";
 
 // The planner emits its plan as JSON inside <plan> tags; Output.object extracts
 // and validates it against this schema. We use Zod here, but any Standard
@@ -102,6 +102,9 @@ async function runCycle(iteration: number): Promise<"empty" | "idle" | "progress
   //
   // It outputs a <plan> JSON block — Output.object parses and validates it.
   // -------------------------------------------------------------------------
+  // Keep GitHub read failures outside Sandcastle's prompt expansion and sandbox.
+  const issuesJson = readPlanningIssues();
+  stop.signal.throwIfAborted();
   const plan = await sandcastle.run({
     signal: stop.signal,
     hooks,
@@ -113,6 +116,7 @@ async function runCycle(iteration: number): Promise<"empty" | "idle" | "progress
     maxIterations: 1,
     agent: agents.planner,
     promptFile: "./.sandcastle/plan-prompt.md",
+    promptArgs: { ISSUES_JSON: issuesJson },
     // Extract and validate the <plan> JSON into a typed object. Throws
     // StructuredOutputError if the tag is missing, the JSON is malformed, or
     // validation fails — which aborts the loop.

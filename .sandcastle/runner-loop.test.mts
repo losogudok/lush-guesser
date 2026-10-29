@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assertExpectedBranch, hasEligibleIssue, loopOptions, parallelIssueLimit, runLoop } from "./runner-loop.mts";
+import { assertExpectedBranch, hasEligibleIssue, loopOptions, parallelIssueLimit, QueueReadError, readPlanningIssues, runLoop } from "./runner-loop.mts";
 
 const continuous = loopOptions({ SANDCASTLE_MAX_ITERATIONS: "infinite", SANDCASTLE_POLL_INTERVAL_SECONDS: "10" });
 
@@ -129,6 +129,53 @@ test("a merge-cycle error stops continuous mode rather than retrying a partial m
   assert.equal(calls, 1);
 });
 
+test("a TLS failure loading planner issues retries before starting an agent", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "sandcastle-planning-read-"));
+  const previousPath = process.env.PATH;
+  const logs: string[] = [];
+  let cycles = 0;
+  let models = 0;
+  let waits = 0;
+  const stop = new AbortController();
+  writeFileSync(join(directory, "gh"), '#!/usr/bin/env node\nprocess.stderr.write(\'Post "https://api.github.com/graphql": net/http: TLS handshake timeout\');\nprocess.exit(1);\n', { mode: 0o700 });
+  process.env.PATH = `${directory}:${previousPath}`;
+  try {
+    await runLoop(continuous, {
+      signal: stop.signal, hasWork: () => true, log: message => logs.push(message),
+      async runCycle() {
+        cycles++;
+        assert.equal(JSON.parse(readPlanningIssues()).length, 1);
+        models++;
+        stop.abort();
+        return "progress";
+      },
+      async wait(milliseconds) {
+        assert.equal(milliseconds, continuous.pollIntervalMs);
+        waits++;
+        assert.equal(models, 0);
+        writeFileSync(join(directory, "gh"), '#!/usr/bin/env node\nprocess.stdout.write(\'[{"number":42,"comments":["Human clarification"]}]\');\n', { mode: 0o700 });
+      },
+    });
+    assert.equal(cycles, 2);
+    assert.equal(models, 1);
+    assert.equal(waits, 1);
+    assert.match(logs.join("\n"), /TLS handshake timeout/);
+  } finally {
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a finite run reports a planner issue-read failure without retrying", async () => {
+  const failure = new QueueReadError(new Error("TLS handshake timeout"));
+  await assert.rejects(runLoop(loopOptions({}), {
+    hasWork() { throw new Error("Unexpected preflight"); },
+    async runCycle() { throw failure; },
+    async wait() { throw new Error("Unexpected retry"); },
+  }), error => error === failure);
+});
+
 test("aborting cancels the real idle timer immediately", { timeout: 1000 }, async () => {
   const stop = new AbortController();
   setImmediate(() => stop.abort());
@@ -146,9 +193,21 @@ test("a pre-aborted loop does not read GitHub or start agents", async () => {
   });
 });
 
-test("the actual watch entrypoint exits on Ctrl+C while the queue is empty", { timeout: 10_000 }, async () => {
+for (const scenario of [
+  { name: "the queue is empty", output: "No eligible issues.", script: "process.stdout.write('[]');" },
+  {
+    name: "the planner issue read times out",
+    output: "Planner issue list unavailable.",
+    script: `if (process.argv.includes("assignees,labels")) {
+      process.stdout.write('[{"assignees":[],"labels":[{"name":"ready-for-agent"}]}]');
+    } else {
+      process.stderr.write('Post "https://api.github.com/graphql": net/http: TLS handshake timeout');
+      process.exit(1);
+    }`,
+  },
+]) test(`the actual watch entrypoint exits on Ctrl+C while ${scenario.name}`, { timeout: 10_000 }, async () => {
   const directory = mkdtempSync(join(tmpdir(), "sandcastle-watch-"));
-  writeFileSync(join(directory, "gh"), "#!/usr/bin/env node\nprocess.stdout.write('[]');\n", { mode: 0o700 });
+  writeFileSync(join(directory, "gh"), `#!/usr/bin/env node\n${scenario.script}\n`, { mode: 0o700 });
   const child = spawn(process.execPath, ["--import", "tsx", ".sandcastle/main.mts"], {
     env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, SANDCASTLE_MAX_ITERATIONS: "infinite" },
     stdio: ["ignore", "pipe", "pipe"],
@@ -159,7 +218,7 @@ test("the actual watch entrypoint exits on Ctrl+C while the queue is empty", { t
   try {
     child.stdout.on("data", chunk => {
       output += chunk.toString();
-      if (!interrupted && output.includes("No eligible issues.")) { interrupted = true; child.kill("SIGINT"); }
+      if (!interrupted && output.includes(scenario.output)) { interrupted = true; child.kill("SIGINT"); }
     });
     child.stderr.on("data", chunk => { output += chunk.toString(); });
     const code = await new Promise<number | null>((resolve, reject) => {

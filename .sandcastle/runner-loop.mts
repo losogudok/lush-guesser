@@ -36,17 +36,41 @@ export function hasEligibleIssue(issues: QueueIssue[]): boolean {
     issue.labels.every(label => !excluded.has(label.name)));
 }
 
-// This inexpensive read avoids invoking the planner when the queue is empty.
-// The planner and validator still check blockers and issue validity.
-export function hasReadyIssues(): boolean {
+function githubEnvironment() {
   const envFile = new URL(".env", import.meta.url);
   const configured = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")) : {};
   const env = { ...process.env };
   for (const [key, value] of Object.entries(configured)) env[key] = value || env[key];
+  return env;
+}
+
+export class QueueReadError extends Error {
+  constructor(cause: unknown) {
+    super(`GitHub issue read failed: ${cause instanceof Error ? cause.message : "unknown error"}`, { cause });
+    this.name = "QueueReadError";
+  }
+}
+
+// Read before creating a sandbox, so a failed request cannot leave partial work.
+export function readPlanningIssues(): string {
+  try {
+    return execFileSync("gh", [
+      "issue", "list", "--state", "open", "--label", "ready-for-agent", "--limit", "100",
+      "--json", "number,title,body,labels,comments,assignees",
+      "--jq", "[.[] | select(.assignees | length == 0) | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]",
+    ], { env: githubEnvironment(), encoding: "utf8", timeout: 30_000, stdio: ["ignore", "pipe", "pipe"] });
+  } catch (error) {
+    throw new QueueReadError(error);
+  }
+}
+
+// This inexpensive read avoids invoking the planner when the queue is empty.
+// The planner and validator still check blockers and issue validity.
+export function hasReadyIssues(): boolean {
   const stdout = execFileSync("gh", [
     "issue", "list", "--state", "open", "--label", "ready-for-agent", "--limit", "100",
     "--json", "assignees,labels",
-  ], { env, encoding: "utf8", timeout: 30_000 });
+  ], { env: githubEnvironment(), encoding: "utf8", timeout: 30_000 });
   return hasEligibleIssue(JSON.parse(stdout));
 }
 
@@ -85,8 +109,17 @@ export async function runLoop(options: ReturnType<typeof loopOptions>, dependenc
         }
       }
       signal?.throwIfAborted();
-      // A failed agent or merge cycle stops the runner instead of blindly retrying.
-      const result = await runCycle(iteration++);
+      let result: CycleResult;
+      try { result = await runCycle(iteration++); }
+      catch (error) {
+        if (signal?.aborted) break;
+        // Only the issue read before sandbox creation can safely retry a cycle.
+        // Agent and merge failures still stop for inspection of partial work.
+        if (!continuous || !(error instanceof QueueReadError)) throw error;
+        log(error.message);
+        await poll("Planner issue list unavailable.");
+        continue;
+      }
       if (!continuous && result === "empty") break;
       if (continuous && result !== "progress" && !signal?.aborted) {
         await poll("No branches merged.");

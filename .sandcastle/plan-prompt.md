@@ -4,7 +4,7 @@ Here are the open issues in the repo:
 
 <issues-json>
 
-!`gh issue list --state open --label ready-for-agent --limit 100 --json number,title,body,labels,comments,assignees --jq '[.[] | select(.assignees | length == 0) | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`
+{{ISSUES_JSON}}
 
 </issues-json>
 

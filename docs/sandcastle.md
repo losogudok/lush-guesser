@@ -149,8 +149,10 @@ another queue check so newly unblocked issues can run.
 
 Stop with Ctrl+C (SIGINT); SIGTERM is also supported. Cancellation propagates to
 active agents and does not request clarification or relabel an issue. Temporary
-GitHub queue-read failures are retried after the polling delay. Fatal planning or
-merge failures stop the process for inspection rather than retrying partial work.
+GitHub queue-read failures, including loading issue bodies and comments for the
+planner, are retried after the polling delay before creating a sandbox or invoking
+a model. Fatal planning or merge failures stop the process for inspection rather
+than retrying partial work.
 Continuous mode does not automatically push or deploy changes. Keep the process
 running in your terminal, or use the user systemd service below.
 
