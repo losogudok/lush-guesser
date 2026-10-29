@@ -14,6 +14,10 @@ pnpm install --frozen-lockfile
 Use Node 24 and a running Docker daemon. Sandcastle installs the root, frontend,
 and server dependencies inside each sandbox with frozen lockfiles, sharing the
 mounted pnpm store. Host `node_modules` directories are not copied into sandboxes.
+Each dependency-install hook has a five-minute timeout. pnpm can contact the
+registry to verify supply-chain policies even when all packages are cached, so
+Sandcastle's default 60-second hook budget is too short during registry delays.
+Frozen lockfiles and supply-chain verification remain enabled.
 
 2. Create a local Sandcastle environment file:
 

@@ -55,9 +55,11 @@ export const hooks = {
   sandbox: {
     onSandboxReady: [
       { command: authSetupCommand },
-      { command: "pnpm install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store" },
-      { command: "pnpm --dir frontend install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store" },
-      { command: "pnpm --dir server install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store" },
+      // pnpm verifies supply-chain policies against the registry even with a warm
+      // store. Allow slow registry requests beyond Sandcastle's 60-second default.
+      { command: "pnpm install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store", timeoutMs: 300_000 },
+      { command: "pnpm --dir frontend install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store", timeoutMs: 300_000 },
+      { command: "pnpm --dir server install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store", timeoutMs: 300_000 },
     ],
   },
 };
