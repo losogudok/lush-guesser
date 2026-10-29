@@ -27,6 +27,29 @@ body:
       required: true
 
   - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Критерии приёмки
+      description: По каким проверяемым результатам будет понятно, что ошибка исправлена? Каждый пункт — отдельное условие.
+      placeholder: |
+        - [ ] После описанных шагов игра показывает ожидаемый результат.
+        - [ ] Повторная игровая сессия работает без этой ошибки.
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Зависимости
+      description: >-
+        Какие задачи нужно завершить сначала? Укажите номера в формате «Blocked by: #123, #456».
+        Если зависимостей нет, напишите «Нет». Если не уверены — «Нужна проверка».
+      placeholder: |
+        Blocked by: #123
+    validations:
+      required: true
+
+  - type: textarea
     id: steps
     attributes:
       label: Как это повторить?
@@ -75,3 +98,12 @@ body:
       description: Любые детали, которые кажутся вам важными.
     validations:
       required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Подготовка к работе агента
+        Новая задача получает метку `needs-triage`. При разборе нужно уточнить ожидаемое поведение, критерии приёмки и зависимости.
+        Для запуска Sandcastle задача должна быть открыта, без назначенного исполнителя и с меткой `ready-for-agent`.
+        Все блокирующие задачи должны быть закрыты. При возможности оформите зависимости через GitHub; иначе оставьте в описании строку `Blocked by: #123`.
+        Перед добавлением `ready-for-agent` снимите конфликтующие метки: `needs-triage`, `needs-info`, `ready-for-human`, `wontfix`.
