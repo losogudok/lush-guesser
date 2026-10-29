@@ -26,6 +26,7 @@ import { z } from "zod";
 import { execFileSync } from "node:child_process";
 import { agents, hooks, sandboxProvider } from "./runtime.mts";
 import { runIssuePipeline } from "./issue-pipeline.mts";
+import { cleanupLogs, logRetentionOptions } from "./log-retention.mts";
 import { assertExpectedBranch, hasReadyIssues, loopOptions, parallelIssueLimit, readPlanningIssues, runLoop } from "./runner-loop.mts";
 
 // The planner emits its plan as JSON inside <plan> tags; Output.object extracts
@@ -58,6 +59,8 @@ Environment:
   SANDCASTLE_MAX_ITERATIONS=infinite (continuous GitHub polling)
   SANDCASTLE_POLL_INTERVAL_SECONDS=60
   SANDCASTLE_MAX_PARALLEL_ISSUES=2
+  SANDCASTLE_LOG_MAX_FILES=50
+  SANDCASTLE_LOG_RETENTION_DAYS=7
   SANDCASTLE_CONTAINER_CPUS=<optional CPUs per container>
   SANDCASTLE_PLANNER_MODEL=gpt-6.1-sol (Codex, high)
   SANDCASTLE_IMPLEMENTER_MODEL=opencode-go/kimi-k3.1-pro (OpenCode Go)
@@ -76,6 +79,15 @@ Environment:
 
 const options = loopOptions();
 const parallelLimit = parallelIssueLimit();
+const retention = logRetentionOptions();
+function maintainLogs() {
+  try {
+    const result = cleanupLogs(".sandcastle/logs", retention);
+    if (result.removed) console.log(`Log cleanup: removed ${result.removed} file(s), freed ${result.bytesFreed} bytes; ${result.remaining} remain.`);
+  } catch (error) {
+    console.error(`Log cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`);
+  }
+}
 const stop = new AbortController();
 const interrupt = () => { process.exitCode = 130; stop.abort(new Error("Interrupted")); };
 const terminate = () => { process.exitCode = 143; stop.abort(new Error("Terminated")); };
@@ -249,7 +261,14 @@ function checkBranch() {
 process.once("SIGINT", interrupt);
 process.once("SIGTERM", terminate);
 try {
-  await runLoop(options, { runCycle, hasWork: hasReadyIssues, signal: stop.signal });
+  await runLoop(options, {
+    async runCycle(iteration) {
+      try { return await runCycle(iteration); }
+      finally { maintainLogs(); }
+    },
+    hasWork() { maintainLogs(); return hasReadyIssues(); },
+    signal: stop.signal,
+  });
 } finally {
   process.removeListener("SIGINT", interrupt);
   process.removeListener("SIGTERM", terminate);

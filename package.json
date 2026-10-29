@@ -6,7 +6,7 @@
     "sandcastle:watch": "SANDCASTLE_MAX_ITERATIONS=infinite tsx .sandcastle/main.mts",
     "sandcastle:service": "node .sandcastle/systemd/install.mjs",
     "sandcastle:check": "tsx .sandcastle/check.mts",
-    "sandcastle:test": "tsx --test .sandcastle/issue-pipeline.test.mts .sandcastle/runner-loop.test.mts .sandcastle/runtime.test.mts .sandcastle/systemd/service.test.mjs",
+    "sandcastle:test": "tsx --test .sandcastle/issue-pipeline.test.mts .sandcastle/runner-loop.test.mts .sandcastle/log-retention.test.mts .sandcastle/runtime.test.mts .sandcastle/systemd/service.test.mjs",
     "sandcastle:build-image": "sandcastle docker build-image --image-name lush-guesser-sandcastle",
     "sandcastle:remove-image": "sandcastle docker remove-image --image-name lush-guesser-sandcastle"
   },

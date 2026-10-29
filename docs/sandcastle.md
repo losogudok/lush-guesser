@@ -186,6 +186,20 @@ running in your terminal, or use the user systemd service below.
 
 Commit runner changes before starting, so sandbox worktrees use the same source.
 
+## Log retention
+
+The runner cleans `.sandcastle/logs` before each queue check (including idle
+polls) and after each completed or failed batch. No cleanup runs while that
+runner's agents are writing logs. By default, it keeps the newest 50 `.log`
+files and removes files last modified 7 or more days ago. Both limits apply.
+Subdirectories, symlinks, and other file types are left alone. Cleanup errors
+are logged without stopping issue processing.
+
+Set `SANDCASTLE_LOG_MAX_FILES` and `SANDCASTLE_LOG_RETENTION_DAYS` to positive
+integers in the process environment or project systemd configuration. These
+limits apply to log files; systemd manages the journal separately. Failure
+comments may reference logs that have since expired.
+
 ## User systemd service
 
 Install, enable, and start this project's watcher:

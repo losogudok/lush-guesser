@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { assertExpectedBranch, blockingReferences, hasEligibleIssue, hasReadyIssues, loopOptions, parallelIssueLimit, QueueReadError, readPlanningIssues, runLoop } from "./runner-loop.mts";
 
 const continuous = loopOptions({ SANDCASTLE_MAX_ITERATIONS: "infinite", SANDCASTLE_POLL_INTERVAL_SECONDS: "10" });
+const entrypoint = fileURLToPath(new URL("./main.mts", import.meta.url));
+const gitDirectory = execFileSync("git", ["rev-parse", "--absolute-git-dir"], { encoding: "utf8" }).trim();
 
 test("parallel issue limits and the configured service branch are enforced", () => {
   assert.equal(parallelIssueLimit({}), 2);
@@ -231,8 +234,9 @@ for (const scenario of [
 ]) test(`the actual watch entrypoint exits on Ctrl+C while ${scenario.name}`, { timeout: 10_000 }, async () => {
   const directory = mkdtempSync(join(tmpdir(), "sandcastle-watch-"));
   writeFileSync(join(directory, "gh"), `#!/usr/bin/env node\n${scenario.script}\n`, { mode: 0o700 });
-  const child = spawn(process.execPath, ["--import", "tsx", ".sandcastle/main.mts"], {
-    env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, SANDCASTLE_MAX_ITERATIONS: "infinite" },
+  const child = spawn(process.execPath, ["--import", import.meta.resolve("tsx"), entrypoint], {
+    cwd: directory,
+    env: { ...process.env, GIT_DIR: gitDirectory, PATH: `${directory}:${process.env.PATH}`, SANDCASTLE_MAX_ITERATIONS: "infinite" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let output = "";
@@ -289,7 +293,7 @@ type QueueFixture = {
   fail?: string;
 };
 
-async function withQueue(fixture: QueueFixture, check: (calls: () => string[][], update: (next: QueueFixture) => void) => Promise<void>) {
+async function withQueue(fixture: QueueFixture, check: (calls: () => string[][], update: (next: QueueFixture) => void, directory: string) => Promise<void>) {
   const directory = mkdtempSync(join(tmpdir(), "sandcastle-queue-"));
   const fixtureFile = join(directory, "queue.json");
   const callsFile = join(directory, "calls.jsonl");
@@ -322,6 +326,7 @@ else if (args[0] === 'issue' && args[1] === 'view') {
     await check(
       () => readFileSync(callsFile, "utf8").trim().split("\n").filter(Boolean).map(line => JSON.parse(line)),
       next => writeFileSync(fixtureFile, JSON.stringify(next)),
+      directory,
     );
   } finally {
     if (previousPath === undefined) delete process.env.PATH;
@@ -407,9 +412,18 @@ for (const scenario of [
   { name: "open native blockers", fixture: { issues: [readyCandidate(21)], native: { "21": [[{ state: "open" }]] } } },
   { name: "a queue emptied after preflight", fixture: { issues: [readyCandidate(21)], planningIssues: [] } },
 ]) test(`the actual one-shot entrypoint skips the planner for ${scenario.name}`, { timeout: 10_000 }, async () => {
-  await withQueue(scenario.fixture, async () => {
-    const child = spawn(process.execPath, ["--import", "tsx", ".sandcastle/main.mts"], {
-      env: { ...process.env, SANDCASTLE_MAX_ITERATIONS: "1", SANDCASTLE_EXPECTED_BRANCH: "" },
+  await withQueue(scenario.fixture, async (_calls, _update, directory) => {
+    const logs = join(directory, ".sandcastle", "logs");
+    mkdirSync(logs, { recursive: true });
+    const expired = join(logs, "expired.log");
+    const recent = join(logs, "recent.log");
+    writeFileSync(expired, "old log");
+    writeFileSync(recent, "recent log");
+    const old = new Date(Date.now() - 8 * 86_400_000);
+    utimesSync(expired, old, old);
+    const child = spawn(process.execPath, ["--import", import.meta.resolve("tsx"), entrypoint], {
+      cwd: directory,
+      env: { ...process.env, GIT_DIR: gitDirectory, SANDCASTLE_MAX_ITERATIONS: "1", SANDCASTLE_EXPECTED_BRANCH: "" },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let output = "";
@@ -425,6 +439,8 @@ for (const scenario of [
       assert.match(output, /No eligible issues\./);
       assert.match(output, /All done\./);
       assert.doesNotMatch(output, /\[planner\] Started/);
+      assert.equal(existsSync(expired), false);
+      assert.equal(existsSync(recent), true);
     } finally {
       clearTimeout(deadline);
       child.kill("SIGKILL");
