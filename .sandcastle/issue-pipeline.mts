@@ -47,6 +47,23 @@ function githubOptions() {
   return { env, encoding: "utf8" as const, timeout: 30_000 };
 }
 
+function failureSummary(error: unknown): string {
+  let summary = (error instanceof Error ? `${error.name}: ${error.message}` :
+    typeof error === "string" ? error : "Unknown execution error").split(/\r?\n/, 1)[0]!;
+  // Provider errors can contain credentials; publish a short diagnostic, never
+  // raw output or a stack trace. The full run remains available in the local log.
+  for (const [key, value] of Object.entries(githubOptions().env)) {
+    if (/(TOKEN|PASSWORD|SECRET|KEY|AUTH|PROXY)/i.test(key) && value && value.length >= 4) {
+      summary = summary.split(value).join("<REDACTED>");
+    }
+  }
+  return summary
+    .replace(/\b(https?|socks5h?):\/\/[^\s/@]+@/gi, "$1://<REDACTED>@")
+    .replace(/\bBearer\s+[^\s,;]+/gi, "Bearer <REDACTED>")
+    .replace(/\b((?:password|token|api[_-]?key|secret)\s*[=:]\s*)[^\s,;]+/gi, "$1<REDACTED>")
+    .slice(0, 500);
+}
+
 // Validation handoffs use typed decisions; agents only report them.
 export function requestHuman(issue: Issue, request: HumanRequest): void {
   const options = githubOptions();
@@ -114,11 +131,15 @@ export async function runIssuePipeline(
     console.log(`${issue.id}: ${request.decision} — ${request.reason}`);
     return { status: request.decision, commits: [] };
   };
-  const uncertain = (stage: string): HumanRequest => ({
-    decision: "needs-info",
-    reason: `${stage} stopped without a valid decision or confirmed completion.`,
-    evidence: [`Inspect the ${stage} log for branch ${issue.branch}; automatic processing stopped.`],
-    question: "Can you confirm this issue still needs work and clarify the expected result before retrying?",
+  const executionFailure = (stage: string, reason: string, error?: unknown): HumanRequest => ({
+    decision: "needs-triage",
+    reason: `${stage}: ${reason}`,
+    evidence: [
+      ...(error === undefined ? [] : [`Failure: ${failureSummary(error)}`]),
+      `Inspect .sandcastle/logs/${issue.branch.replaceAll("/", "-")}-${stage}.log for the full run.`,
+      "Automatic processing stopped. Partial work is excluded from merging and must be reviewed before retrying.",
+    ],
+    question: `After reviewing the ${stage} failure and any partial work, should this issue be retried with ready-for-agent or handed to a human with ready-for-human?`,
   });
   const promptArgs = { TASK_ID: issue.id, ISSUE_TITLE: issue.title, BRANCH: issue.branch, REVIEW_BASE: reviewBase };
 
@@ -131,9 +152,9 @@ export async function runIssuePipeline(
       promptFile: "./.sandcastle/validate-prompt.md", promptArgs,
     });
     worktreeStatus = await sandbox.exec("git status --porcelain");
-  } catch {
+  } catch (error) {
     signal?.throwIfAborted();
-    return pause(uncertain("validator"));
+    return pause(executionFailure("validator", "Execution or worktree inspection failed.", error));
   }
   if (worktreeStatus.exitCode !== 0 || result.commits.length > 0 || worktreeStatus.stdout.trim()) {
     return pause({
@@ -145,7 +166,7 @@ export async function runIssuePipeline(
   }
   let validation;
   try { validation = readDecision(result.stdout, "validation", validationSchema); }
-  catch { return pause(uncertain("validator")); }
+  catch (error) { return pause(executionFailure("validator", "Validation output was missing, malformed, or unsupported.", error)); }
 
   if (validation.decision === "skip") {
     console.log(`${issue.id}: skipped — ${validation.reason}`);
@@ -170,14 +191,14 @@ export async function runIssuePipeline(
         agent: agents[stage], promptFile: `./.sandcastle/${stage === "implementer" ? "implement" : "review"}-prompt.md`,
         promptArgs,
       });
-    } catch { signal?.throwIfAborted(); return pause(uncertain(stage)); }
+    } catch (error) { signal?.throwIfAborted(); return pause(executionFailure(stage, "Execution failed before confirmed completion.", error)); }
     if (result.stdout.includes("<human-required>")) {
       let request;
       try { request = readDecision(result.stdout, "human-required", humanRequestSchema); }
-      catch { request = uncertain(stage); }
+      catch (error) { request = executionFailure(stage, "The human handoff was malformed or unsupported.", error); }
       return pause(request);
     }
-    if (result.completionSignal !== "<promise>COMPLETE</promise>") return pause(uncertain(stage));
+    if (result.completionSignal !== "<promise>COMPLETE</promise>") return pause(executionFailure(stage, "The required completion signal was not returned."));
     commits.push(...result.commits);
     if (stage === "implementer" && commits.length === 0) return pause({
       decision: "needs-triage",

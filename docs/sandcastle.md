@@ -115,9 +115,15 @@ evidence can require another human decision; unrelated remaining work stays in
 separate issues according to the maintainer's scope decision.
 
 The same handoff is available if doubts arise during implementation or review.
-Malformed validation output, validator file changes, agent failures, or missing
-completion signals also exclude the branch and request human input. Both coding
-and review must explicitly finish before their commits become eligible to merge.
+Execution failures, malformed output, validator file changes, and missing completion
+signals pause the issue with `needs-triage` and exclude its branch from merging.
+Failure handoffs identify the stage, include a short diagnostic with credentials
+redacted when an exception is available, and point to the local log. The maintainer
+reviews partial work and decides whether to retry or use `ready-for-human` for
+manual implementation. `needs-info` is reserved for an explicit request for a
+specific missing fact or requirement; an agent failure alone does not imply the
+reporter must clarify the issue. Both coding and review must explicitly finish
+before their commits become eligible to merge.
 After a human responds, resolve blockers, remove conflicting triage labels, and
 restore `ready-for-agent` to retry. Other independent issues can continue.
 

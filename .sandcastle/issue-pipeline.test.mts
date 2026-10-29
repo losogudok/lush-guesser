@@ -202,11 +202,13 @@ for (const [name, reply] of [
   ["conflicting decisions", { stdout: `${approved().stdout}${approved().stdout}` }],
   ["validator failure", new Error("Provider unavailable")],
 ] as const) {
-  test(`${name} fails closed and requests human input`, async () => {
+  test(`${name} pauses for triage rather than requesting reporter information`, async () => {
     const f = fixture([reply]);
-    assert.deepEqual(await f.run(), { status: "needs-info", commits: [] });
+    assert.deepEqual(await f.run(), { status: "needs-triage", commits: [] });
     assert.equal(f.calls.length, 1);
     assert.equal(f.requests.length, 1);
+    assert.match(f.requests[0]!.evidence.join("\n"), /sandcastle-issue-42-validator\.log/);
+    assert.doesNotMatch(f.requests[0]!.question, /clarify the expected result/);
   });
 }
 
@@ -235,8 +237,9 @@ test("doubt discovered during implementation excludes partial commits from mergi
 
 test("an incomplete implementer cannot merge merely because it made commits", async () => {
   const f = fixture([approved(), { stdout: "Still working", commits: [{ sha: "partial" }] }]);
-  assert.deepEqual(await f.run(), { status: "needs-info", commits: [] });
+  assert.deepEqual(await f.run(), { status: "needs-triage", commits: [] });
   assert.equal(f.calls.length, 2);
+  assert.match(f.requests[0]!.reason, /completion signal/i);
 });
 
 test("an approved issue with no implementation commits asks a human instead of silently skipping", async () => {
@@ -245,10 +248,35 @@ test("an approved issue with no implementation commits asks a human instead of s
   assert.equal(f.calls.length, 2);
 });
 
-test("a provider failure during implementation pauses the issue", async () => {
-  const f = fixture([approved(), new Error("Provider unavailable")]);
-  assert.deepEqual(await f.run(), { status: "needs-info", commits: [] });
-  assert.equal(f.requests.length, 1);
+for (const stage of ["validator", "implementer", "reviewer"] as const) {
+  test(`a provider failure during ${stage} reports the failure and requests triage`, async () => {
+    const prior = stage === "validator" ? [] : stage === "implementer" ? [approved()] : [approved(), completed("partial")];
+    const f = fixture([...prior, new Error("Provider idle timeout after 600 seconds")]);
+    assert.deepEqual(await f.run(), { status: "needs-triage", commits: [] });
+    assert.equal(f.calls.length, prior.length + 1);
+    assert.equal(f.requests.length, 1);
+    assert.match(f.requests[0]!.reason, new RegExp(stage));
+    assert.match(f.requests[0]!.evidence.join("\n"), /Provider idle timeout after 600 seconds/);
+    assert.ok(f.requests[0]!.evidence.join("\n").includes(`.sandcastle/logs/sandcastle-issue-42-${stage}.log`));
+    assert.match(f.requests[0]!.question, /retry|retried/);
+    assert.match(f.requests[0]!.question, /ready-for-human/);
+  });
+}
+
+test("execution failure details redact credentials before publishing the handoff", async () => {
+  const previousToken = process.env.SANDCASTLE_TEST_TOKEN;
+  process.env.SANDCASTLE_TEST_TOKEN = "fixture-private-value";
+  try {
+    const f = fixture([approved(), new Error("Provider rejected fixture-private-value at https://name:password@example.invalid using Bearer other-private-value\nstack detail")]);
+    assert.deepEqual(await f.run(), { status: "needs-triage", commits: [] });
+    const handoff = JSON.stringify(f.requests);
+    assert.doesNotMatch(handoff, /fixture-private-value|name:password|other-private-value|stack detail/);
+    assert.match(handoff, /Provider rejected/);
+    assert.match(handoff, /REDACTED/);
+  } finally {
+    if (previousToken === undefined) delete process.env.SANDCASTLE_TEST_TOKEN;
+    else process.env.SANDCASTLE_TEST_TOKEN = previousToken;
+  }
 });
 
 test("reviewer doubts exclude implementation and review commits", async () => {
@@ -263,7 +291,8 @@ test("reviewer doubts exclude implementation and review commits", async () => {
 
 test("a malformed late handoff cannot be treated as completion", async () => {
   const f = fixture([approved(), { ...completed("partial"), stdout: "<human-required>{bad}</human-required>" }]);
-  assert.deepEqual(await f.run(), { status: "needs-info", commits: [] });
+  assert.deepEqual(await f.run(), { status: "needs-triage", commits: [] });
+  assert.match(f.requests[0]!.reason, /malformed/i);
 });
 
 test("a failed human notification propagates without a second notification or implementation", async () => {
@@ -291,32 +320,34 @@ test("operator cancellation does not relabel an issue or ask for clarification",
   assert.equal(requests, 0);
 });
 
-test("GitHub handoff removes eligibility before commenting, and does not close or assign", () => {
-  const directory = mkdtempSync(join(tmpdir(), "sandcastle-handoff-"));
-  const logFile = join(directory, "calls.jsonl");
-  const previousPath = process.env.PATH;
-  const current = { state: "OPEN", assignees: [], labels: [{ name: "ready-for-agent" }] };
-  writeFileSync(join(directory, "gh"), `#!/usr/bin/env node
-const fs = require('node:fs');
-const args = process.argv.slice(2);
-const body = args[1] === 'comment' ? fs.readFileSync(0, 'utf8') : '';
-fs.appendFileSync(${JSON.stringify(logFile)}, JSON.stringify({args, body}) + '\\n');
-if (args[1] === 'view') process.stdout.write(${JSON.stringify(JSON.stringify(current))});
-`, { mode: 0o700 });
-  try {
-    process.env.PATH = `${directory}:${previousPath}`;
-    requestHuman(issue, {
-      decision: "needs-info", reason: "Missing reproduction", evidence: ["No steps in the issue"],
-      question: "What steps reproduce this?",
-    });
-    const calls = readFileSync(logFile, "utf8").trim().split("\n").map(line => JSON.parse(line));
-    assert.deepEqual(calls.map(call => call.args[1]), ["view", "edit", "comment"]);
-    assert.deepEqual(calls[1].args, ["issue", "edit", "42", "--remove-label", "ready-for-agent", "--add-label", "needs-info"]);
-    assert.deepEqual(calls[2].args, ["issue", "comment", "42", "--body-file", "-"]);
-    assert.match(calls[2].body, /What steps reproduce this\?/);
-    assert.match(calls[2].body, /No steps in the issue/);
-  } finally {
-    process.env.PATH = previousPath;
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
+for (const label of ["needs-info", "needs-triage"] as const) {
+  test(`GitHub ${label} handoff removes eligibility before commenting, and does not close or assign`, () => {
+    const directory = mkdtempSync(join(tmpdir(), "sandcastle-handoff-"));
+    const logFile = join(directory, "calls.jsonl");
+    const previousPath = process.env.PATH;
+    const current = { state: "OPEN", assignees: [], labels: [{ name: "ready-for-agent" }] };
+    writeFileSync(join(directory, "gh"), `#!/usr/bin/env node
+  const fs = require('node:fs');
+  const args = process.argv.slice(2);
+  const body = args[1] === 'comment' ? fs.readFileSync(0, 'utf8') : '';
+  fs.appendFileSync(${JSON.stringify(logFile)}, JSON.stringify({args, body}) + '\\n');
+  if (args[1] === 'view') process.stdout.write(${JSON.stringify(JSON.stringify(current))});
+  `, { mode: 0o700 });
+    try {
+      process.env.PATH = `${directory}:${previousPath}`;
+      requestHuman(issue, {
+        decision: label, reason: "Missing reproduction", evidence: ["No steps in the issue"],
+        question: "What steps reproduce this?",
+      });
+      const calls = readFileSync(logFile, "utf8").trim().split("\n").map(line => JSON.parse(line));
+      assert.deepEqual(calls.map(call => call.args[1]), ["view", "edit", "comment"]);
+      assert.deepEqual(calls[1].args, ["issue", "edit", "42", "--remove-label", "ready-for-agent", "--add-label", label]);
+      assert.deepEqual(calls[2].args, ["issue", "comment", "42", "--body-file", "-"]);
+      assert.match(calls[2].body, /What steps reproduce this\?/);
+      assert.match(calls[2].body, /No steps in the issue/);
+    } finally {
+      process.env.PATH = previousPath;
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+}
