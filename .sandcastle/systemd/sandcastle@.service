@@ -1,0 +1,22 @@
+[Unit]
+Description=Sandcastle issue watcher (%i)
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+[Service]
+Type=exec
+EnvironmentFile=%h/.config/sandcastle/projects/%i.env
+ExecStartPre=%h/.local/libexec/sandcastle/launch check
+ExecStart=%h/.local/libexec/sandcastle/launch run
+Restart=on-abnormal
+RestartSec=30
+SuccessExitStatus=130 143
+KillMode=mixed
+TimeoutStartSec=180
+TimeoutStopSec=120
+UMask=0077
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

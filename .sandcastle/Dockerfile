@@ -32,10 +32,13 @@ ARG PLAYWRIGHT_VERSION=1.64.1
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
 
 # Install the agent, package manager, and browser tooling before dropping root.
-RUN npm install -g pnpm@12.14.0 opencode-ai@latest @playwright/test@${PLAYWRIGHT_VERSION} \
+RUN npm install -g pnpm@12.14.0 opencode-ai@latest @openai/codex@0.165.0 @playwright/test@${PLAYWRIGHT_VERSION} \
   && playwright install --with-deps chromium \
   && chmod -R a+rX /opt/playwright \
   && rm -rf /var/lib/apt/lists/* /root/.npm
+
+RUN mkdir -p /home/agent/.local/share/opencode /home/agent/.local/share/pnpm/store /home/agent/.codex \
+  && chown -R ${AGENT_UID}:${AGENT_GID} /home/agent
 
 USER ${AGENT_UID}:${AGENT_GID}
 

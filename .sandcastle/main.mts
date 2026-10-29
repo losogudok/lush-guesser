@@ -4,8 +4,9 @@
 //   Phase 1 (Plan):             An agent analyzes open issues, builds a
 //                               dependency graph, and outputs a <plan> JSON
 //                               listing unblocked issues with branch names.
-//   Phase 2 (Execute + Review): For each issue, a sandbox is created via
-//                               createSandbox(). The implementer runs first
+//   Phase 2 (Validate + Code):  For each issue, a sandbox is created via
+//                               createSandbox(). A validator runs before coding.
+//                               The implementer then runs
 //                               (100 iterations). If it produces commits, a
 //                               reviewer runs in the same sandbox on the same
 //                               branch (1 iteration). All issue pipelines run
@@ -13,8 +14,7 @@
 //   Phase 3 (Merge):            A single agent merges all completed branches
 //                               into the current branch.
 //
-// The outer loop repeats up to MAX_ITERATIONS times so that newly unblocked
-// issues are picked up after each round of merges.
+// The outer loop can run a fixed number of cycles or poll continuously.
 //
 // Usage:
 //   pnpm exec tsx .sandcastle/main.mts
@@ -22,9 +22,11 @@
 //   "scripts": { "sandcastle": "tsx .sandcastle/main.mts" }
 
 import * as sandcastle from "@ai-hero/sandcastle";
-import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { z } from "zod";
 import { execFileSync } from "node:child_process";
+import { agents, hooks, sandboxProvider } from "./runtime.mts";
+import { runIssuePipeline } from "./issue-pipeline.mts";
+import { assertExpectedBranch, hasReadyIssues, loopOptions, parallelIssueLimit, runLoop } from "./runner-loop.mts";
 
 // The planner emits its plan as JSON inside <plan> tags; Output.object extracts
 // and validates it against this schema. We use Zod here, but any Standard
@@ -32,7 +34,11 @@ import { execFileSync } from "node:child_process";
 // https://standardschema.dev.
 const planSchema = z.object({
   issues: z.array(
-    z.object({ id: z.string(), title: z.string(), branch: z.string() }),
+    z.object({
+      id: z.string().regex(/^[1-9]\d*$/),
+      title: z.string(),
+      branch: z.string().regex(/^sandcastle\/issue-[1-9]\d*$/),
+    }).refine(issue => issue.branch === `sandcastle/issue-${issue.id}`, "Issue branch must match its ID"),
   ),
 });
 type PlannedIssue = z.infer<typeof planSchema>["issues"][number];
@@ -49,7 +55,15 @@ Setup:
 
 Environment:
   SANDCASTLE_MAX_ITERATIONS=1
-  SANDCASTLE_MODEL=opencode/big-pickle
+  SANDCASTLE_MAX_ITERATIONS=infinite (continuous GitHub polling)
+  SANDCASTLE_POLL_INTERVAL_SECONDS=60
+  SANDCASTLE_MAX_PARALLEL_ISSUES=2
+  SANDCASTLE_CONTAINER_CPUS=<optional CPUs per container>
+  SANDCASTLE_PLANNER_MODEL=gpt-6.1-sol (Codex, high)
+  SANDCASTLE_IMPLEMENTER_MODEL=opencode-go/kimi-k3.1-pro (OpenCode Go)
+  SANDCASTLE_REVIEWER_MODEL=gpt-6.1-sol (Codex, high)
+  SANDCASTLE_MERGER_MODEL=gpt-6.1-sol (Codex, medium)
+  SANDCASTLE_CODEX_AUTH_FILE=<host CODEX_HOME/auth.json>
   SANDCASTLE_IMAGE_NAME=lush-guesser-sandcastle
   SANDCASTLE_TARGET_BRANCH=<starting HEAD commit>
 `);
@@ -60,46 +74,24 @@ Environment:
 // Configuration
 // ---------------------------------------------------------------------------
 
-const MAX_ITERATIONS = Number(process.env.SANDCASTLE_MAX_ITERATIONS ?? "1");
-if (!Number.isSafeInteger(MAX_ITERATIONS) || MAX_ITERATIONS < 1) {
-  throw new Error("SANDCASTLE_MAX_ITERATIONS must be a positive integer");
-}
-const IMAGE_NAME = process.env.SANDCASTLE_IMAGE_NAME ?? "lush-guesser-sandcastle";
-const MODEL = process.env.SANDCASTLE_MODEL ?? "opencode/big-pickle";
-// Resolve on the host: HEAD inside the review sandbox is the issue branch.
-const TARGET_BRANCH = execFileSync(
-  "git",
-  ["rev-parse", "--verify", `${process.env.SANDCASTLE_TARGET_BRANCH ?? "HEAD"}^{commit}`],
-  { encoding: "utf8" },
-).trim();
-
-const hooks = {
-  sandbox: {
-    onSandboxReady: [
-      { command: "pnpm install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store" },
-      { command: "pnpm --dir frontend install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store" },
-      { command: "pnpm --dir server install --frozen-lockfile --store-dir /home/agent/.local/share/pnpm/store" },
-    ],
-  },
-};
-
-const sandboxProvider = () =>
-  docker({
-    imageName: IMAGE_NAME,
-    mounts: [{
-      hostPath: "~/.local/share/pnpm/store",
-      sandboxPath: "/home/agent/.local/share/pnpm/store",
-    }],
-  });
-
-const agent = () => sandcastle.opencode(MODEL);
+const options = loopOptions();
+const parallelLimit = parallelIssueLimit();
+const stop = new AbortController();
+const interrupt = () => { process.exitCode = 130; stop.abort(new Error("Interrupted")); };
+const terminate = () => { process.exitCode = 143; stop.abort(new Error("Terminated")); };
 
 // ---------------------------------------------------------------------------
 // Main loop
 // ---------------------------------------------------------------------------
 
-for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
-  console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
+async function runCycle(iteration: number): Promise<"empty" | "idle" | "progress"> {
+  checkBranch();
+  const limit = options.maxIterations === Infinity ? "infinite" : options.maxIterations;
+  console.log(`\n=== Iteration ${iteration}/${limit} ===\n`);
+  // Resolve for each batch, so reviews exclude changes merged in earlier cycles.
+  const TARGET_BRANCH = execFileSync("git", [
+    "rev-parse", "--verify", `${process.env.SANDCASTLE_TARGET_BRANCH ?? "HEAD"}^{commit}`,
+  ], { encoding: "utf8" }).trim();
 
   // -------------------------------------------------------------------------
   // Phase 1: Plan
@@ -111,6 +103,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // It outputs a <plan> JSON block — Output.object parses and validates it.
   // -------------------------------------------------------------------------
   const plan = await sandcastle.run({
+    signal: stop.signal,
     hooks,
     sandbox: sandboxProvider(),
     branchStrategy: { type: "merge-to-head" },
@@ -118,7 +111,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     // One iteration is enough: the planner just needs to read and reason,
     // not write code. (Structured output requires maxIterations: 1.)
     maxIterations: 1,
-    agent: agent(),
+    agent: agents.planner,
     promptFile: "./.sandcastle/plan-prompt.md",
     // Extract and validate the <plan> JSON into a typed object. Throws
     // StructuredOutputError if the tag is missing, the JSON is malformed, or
@@ -126,12 +119,13 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     output: sandcastle.Output.object({ tag: "plan", schema: planSchema }),
   });
 
-  const issues = plan.output.issues;
+  const issues = plan.output.issues.slice(0, parallelLimit);
+  stop.signal.throwIfAborted();
 
   if (issues.length === 0) {
     // No unblocked work — either everything is done or everything is blocked.
-    console.log("No unblocked issues to work on. Exiting.");
-    break;
+    console.log("No unblocked issues to work on.");
+    return "empty";
   }
 
   console.log(
@@ -142,17 +136,18 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   }
 
   // -------------------------------------------------------------------------
-  // Phase 2: Execute + Review
+  // Phase 2: Validate + Implement + Review
   //
   // For each issue, create a sandbox via createSandbox() so the implementer
-  // and reviewer share the same sandbox instance per branch. The implementer
-  // runs first; if it produces commits, the reviewer runs in the same sandbox.
+  // and reviewer share the same sandbox instance per branch. Validation must
+  // approve the issue first; human handoffs exclude the whole branch from merging.
   //
   // Promise.allSettled means one failing pipeline doesn't cancel the others.
   // -------------------------------------------------------------------------
 
   const settled = await Promise.allSettled(
     issues.map(async (issue: PlannedIssue) => {
+      stop.signal.throwIfAborted();
       const sandbox = await sandcastle.createSandbox({
         branch: issue.branch,
         sandbox: sandboxProvider(),
@@ -160,46 +155,13 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
       });
 
       try {
-        // Run the implementer
-        const implement = await sandbox.run({
-          name: "implementer",
-          maxIterations: 100,
-          agent: agent(),
-          promptFile: "./.sandcastle/implement-prompt.md",
-          promptArgs: {
-            TASK_ID: issue.id,
-            ISSUE_TITLE: issue.title,
-            BRANCH: issue.branch,
-          },
-        });
-
-        // Only review if the implementer produced commits
-        if (implement.commits.length > 0) {
-          const review = await sandbox.run({
-            name: "reviewer",
-            maxIterations: 1,
-            agent: agent(),
-            promptFile: "./.sandcastle/review-prompt.md",
-            promptArgs: {
-              BRANCH: issue.branch,
-              TARGET_BRANCH,
-            },
-          });
-
-          // Merge commits from both runs so the merge phase sees all of them.
-          // Each sandbox.run() only returns commits from its own run.
-          return {
-            ...review,
-            commits: [...implement.commits, ...review.commits],
-          };
-        }
-
-        return implement;
+        return await runIssuePipeline(sandbox, issue, TARGET_BRANCH, undefined, stop.signal);
       } finally {
         await sandbox.close();
       }
     }),
   );
+  stop.signal.throwIfAborted();
 
   // Log any agents that threw (network error, sandbox crash, etc.).
   for (const [i, outcome] of settled.entries()) {
@@ -217,6 +179,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     .filter(
       (entry) =>
         entry.outcome.status === "fulfilled" &&
+        entry.outcome.value.status === "completed" &&
         entry.outcome.value.commits.length > 0,
     )
     .map((entry) => entry.issue);
@@ -233,7 +196,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   if (completedBranches.length === 0) {
     // All agents ran but none made commits — nothing to merge this cycle.
     console.log("No commits produced. Nothing to merge.");
-    continue;
+    return "idle";
   }
 
   // -------------------------------------------------------------------------
@@ -245,13 +208,15 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // The {{BRANCHES}} and {{ISSUES}} prompt arguments are lists that the agent
   // uses to know which branches to merge and which issues to close.
   // -------------------------------------------------------------------------
+  checkBranch();
   await sandcastle.run({
+    signal: stop.signal,
     hooks,
     sandbox: sandboxProvider(),
     branchStrategy: { type: "merge-to-head" },
     name: "merger",
     maxIterations: 1,
-    agent: agent(),
+    agent: agents.merger,
     promptFile: "./.sandcastle/merge-prompt.md",
     promptArgs: {
       // A markdown list of branch names, one per line.
@@ -262,6 +227,22 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   });
 
   console.log("\nBranches merged.");
+  return "progress";
 }
 
-console.log("\nAll done.");
+function checkBranch() {
+  if (process.env.SANDCASTLE_EXPECTED_BRANCH) {
+    const branch = execFileSync("git", ["branch", "--show-current"], { encoding: "utf8" }).trim();
+    assertExpectedBranch(process.env.SANDCASTLE_EXPECTED_BRANCH, branch);
+  }
+}
+
+process.once("SIGINT", interrupt);
+process.once("SIGTERM", terminate);
+try {
+  await runLoop(options, { runCycle, hasWork: hasReadyIssues, signal: stop.signal });
+} finally {
+  process.removeListener("SIGINT", interrupt);
+  process.removeListener("SIGTERM", terminate);
+}
+console.log(stop.signal.aborted ? "\nStopped." : "\nAll done.");

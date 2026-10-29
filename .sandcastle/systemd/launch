@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${SANDCASTLE_PROJECT_DIR:?Set SANDCASTLE_PROJECT_DIR in the project service configuration}"
+: "${SANDCASTLE_NODE_BIN:?Set SANDCASTLE_NODE_BIN to an absolute Node executable}"
+
+cd -- "$SANDCASTLE_PROJECT_DIR"
+if [[ -n "${SANDCASTLE_EXPECTED_BRANCH:-}" ]]; then
+  branch=$(git branch --show-current)
+  if [[ "$branch" != "$SANDCASTLE_EXPECTED_BRANCH" ]]; then
+    echo "Sandcastle expected branch $SANDCASTLE_EXPECTED_BRANCH; found ${branch:-detached HEAD}." >&2
+    exit 1
+  fi
+fi
+
+case "${1:-run}" in
+  check)
+    attempts=${SANDCASTLE_STARTUP_ATTEMPTS:-12}
+    delay=${SANDCASTLE_STARTUP_RETRY_SECONDS:-5}
+    if [[ ! "$attempts" =~ ^[1-9][0-9]*$ || ! "$delay" =~ ^[0-9]+$ ]]; then
+      echo "Invalid Sandcastle startup retry settings." >&2
+      exit 2
+    fi
+    for ((attempt = 1; attempt <= attempts; attempt++)); do
+      if "$SANDCASTLE_NODE_BIN" --import tsx .sandcastle/check.mts; then
+        exit 0
+      fi
+      if ((attempt < attempts)); then
+        echo "Sandcastle startup check failed ($attempt/$attempts); retrying in ${delay}s." >&2
+        sleep "$delay"
+      fi
+    done
+    exit 1
+    ;;
+  run)
+    git_directory=$(git rev-parse --path-format=absolute --git-common-dir)
+    exec flock --no-fork --nonblock --conflict-exit-code 75 \
+      "$git_directory/sandcastle-service.lock" \
+      "$SANDCASTLE_NODE_BIN" --import tsx .sandcastle/main.mts
+    ;;
+  *)
+    echo "Usage: launch check|run" >&2
+    exit 2
+    ;;
+esac

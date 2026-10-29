@@ -6,13 +6,21 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
 
 ## Branch diff
 
-!`git diff {{TARGET_BRANCH}}...{{BRANCH}}`
+!`git diff {{REVIEW_BASE}}...{{BRANCH}}`
 
 ## Commits on this branch
 
-!`git log {{TARGET_BRANCH}}..{{BRANCH}} --oneline`
+!`git log {{REVIEW_BASE}}..{{BRANCH}} --oneline`
 
 # REVIEW PROCESS
+
+Before reviewing, read issue {{TASK_ID}} ({{ISSUE_TITLE}}) and its comments. If new
+evidence casts doubt on the issue's validity, necessity, or acceptance criteria,
+stop and emit one JSON object wrapped in `<human-required>...</human-required>`
+with `decision` (`needs-info` or
+`needs-triage`), `reason`, nonempty `evidence`, and a focused `question`. Do not emit
+COMPLETE, change issue labels, close the issue, or merge partial work. The runner
+will publish the question and pause this pipeline for a human.
 
 1. **Understand the change**: Read the diff and commits above to understand the intent.
 

@@ -29,6 +29,14 @@ Pay extra attention to test files that touch the relevant parts of the code.
 
 # EXECUTION
 
+Begin only after the validator has approved this issue. If new evidence makes its
+validity or requirements uncertain, stop, leave the issue open, and emit exactly
+one JSON object wrapped in `<human-required>...</human-required>` with
+`decision` (`needs-info` or `needs-triage`),
+`reason`, `evidence` (a nonempty array), and a focused `question`. The runner will
+publish the question and remove `ready-for-agent`. Do not emit COMPLETE in that
+case; partial commits must not be merged. Never edit issue labels yourself.
+
 If applicable, use RGR to complete the task.
 
 1. RED: write one test
@@ -70,7 +78,7 @@ Keep it concise.
 
 # THE ISSUE
 
-If the task is not complete, leave a comment on the issue with what was done.
+If the task is not complete, request human input with `<human-required>` as above.
 
 Do not close the issue - this will be done later.
 
