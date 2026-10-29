@@ -4,6 +4,7 @@ import { parseEnv } from "node:util";
 import type { Sandbox } from "@ai-hero/sandcastle";
 import { z } from "zod";
 import { agents } from "./runtime.mts";
+import { hasEligibleIssue } from "./runner-loop.mts";
 
 export type Issue = { id: string; title: string; branch: string };
 const explanation = {
@@ -15,14 +16,20 @@ const humanRequestSchema = z.object({
   decision: z.enum(["needs-info", "needs-triage"]),
   question: z.string().trim().min(1),
 });
+const alreadyResolvedSchema = z.object({
+  ...explanation,
+  decision: z.literal("already-resolved"),
+  maintainerCommentUrl: z.string().url(),
+});
 const validationSchema = z.union([
   z.object({ ...explanation, decision: z.literal("implement") }),
   z.object({ ...explanation, decision: z.literal("skip") }),
+  alreadyResolvedSchema,
   humanRequestSchema,
 ]);
 export type HumanRequest = z.infer<typeof humanRequestSchema>;
 type PipelineResult = {
-  status: "completed" | "skipped" | HumanRequest["decision"];
+  status: "completed" | "already-resolved" | "skipped" | HumanRequest["decision"];
   commits: { sha: string }[];
 };
 
@@ -32,19 +39,22 @@ function readDecision<T>(stdout: string, tag: string, schema: z.ZodType<T>): T {
   return schema.parse(JSON.parse(matches[0]![1]!));
 }
 
-// Validation handoffs use typed decisions; agents only report them.
-export function requestHuman(issue: Issue, request: HumanRequest): void {
+function githubOptions() {
   const envFile = new URL(".env", import.meta.url);
   const configured = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")) : {};
   const env = { ...process.env };
   for (const [key, value] of Object.entries(configured)) env[key] = value || env[key];
-  const options = { env, encoding: "utf8" as const, timeout: 30_000 };
+  return { env, encoding: "utf8" as const, timeout: 30_000 };
+}
+
+// Validation handoffs use typed decisions; agents only report them.
+export function requestHuman(issue: Issue, request: HumanRequest): void {
+  const options = githubOptions();
   const current = JSON.parse(execFileSync("gh", [
     "issue", "view", issue.id, "--json", "state,assignees,labels",
   ], options));
   // Avoid changing an issue that a human or another worker has already taken.
-  if (current.state !== "OPEN" || current.assignees.length > 0 ||
-      !current.labels.some((label: { name: string }) => label.name === "ready-for-agent")) return;
+  if (current.state !== "OPEN" || !hasEligibleIssue([current])) return;
 
   // Remove eligibility first, so a failed comment cannot schedule another run.
   execFileSync("gh", [
@@ -52,14 +62,42 @@ export function requestHuman(issue: Issue, request: HumanRequest): void {
   ], options);
   const body = [
     "<!-- sandcastle:human-required -->",
-    "Sandcastle paused this issue for human input. It will not be merged or closed automatically by this pipeline.",
+    "Sandcastle paused this issue for human input. It will not be merged or closed while awaiting that input.",
     `Reason: ${request.reason}`,
     "Evidence:",
     ...request.evidence.map(item => `- ${item}`),
     `Question: ${request.question}`,
     "After answering, resolve blockers, remove conflicting triage labels, and restore ready-for-agent to retry.",
+    "If the issue is already implemented, a maintainer can confirm that here and restore ready-for-agent for verification and closure, or close it as completed directly.",
   ].join("\n\n");
   execFileSync("gh", ["issue", "comment", issue.id, "--body-file", "-"], { ...options, input: body });
+}
+
+function closeResolvedIssue(issue: Issue, resolution: z.infer<typeof alreadyResolvedSchema>): "already-resolved" | "skipped" {
+  const options = githubOptions();
+  const current = JSON.parse(execFileSync("gh", [
+    "issue", "view", issue.id, "--json", "state,assignees,labels,comments",
+  ], options));
+  // A maintainer may have closed or reclassified the issue during validation.
+  if (current.state !== "OPEN" || !hasEligibleIssue([current])) return "skipped";
+
+  const confirmation = current.comments.find((comment: { url: string; authorAssociation: string; body: string }) =>
+    comment.url === resolution.maintainerCommentUrl &&
+    ["OWNER", "MEMBER", "COLLABORATOR"].includes(comment.authorAssociation) &&
+    comment.body.trim() && !comment.body.includes("<!-- sandcastle:"));
+  if (!confirmation) throw new Error(`Issue ${issue.id}: maintainer confirmation is missing or invalid; no GitHub changes made.`);
+
+  const body = [
+    "<!-- sandcastle:already-resolved -->",
+    "Already implemented; verified by Sandcastle against the starting base.",
+    `Reason: ${resolution.reason}`,
+    `Maintainer confirmation: ${resolution.maintainerCommentUrl}`,
+    "Evidence:",
+    ...resolution.evidence.map(item => `- ${item}`),
+  ].join("\n\n");
+  execFileSync("gh", ["issue", "close", issue.id, "--reason", "completed", "--comment", body], options);
+  execFileSync("gh", ["issue", "edit", issue.id, "--remove-label", "ready-for-agent"], options);
+  return "already-resolved";
 }
 
 export async function runIssuePipeline(
@@ -112,6 +150,12 @@ export async function runIssuePipeline(
   if (validation.decision === "skip") {
     console.log(`${issue.id}: skipped — ${validation.reason}`);
     return { status: "skipped", commits: [] };
+  }
+  if (validation.decision === "already-resolved") {
+    signal?.throwIfAborted();
+    const status = closeResolvedIssue(issue, validation);
+    console.log(`${issue.id}: ${status} — ${validation.reason}`);
+    return { status, commits: [] };
   }
   if (validation.decision !== "implement") return pause(validation);
 

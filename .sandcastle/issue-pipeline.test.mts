@@ -19,6 +19,58 @@ const approved = () => decision({
 const completed = (sha: string): AgentReply => ({
   stdout: "<promise>COMPLETE</promise>", completionSignal: "<promise>COMPLETE</promise>", commits: [{ sha }],
 });
+const confirmation = {
+  url: "https://github.com/losogudok/lush-guesser/issues/42#issuecomment-123",
+  authorAssociation: "OWNER", body: "#42 is implemented",
+};
+const resolved = {
+  decision: "already-resolved", reason: "The starting base satisfies the acceptance criteria.",
+  evidence: ["The base contains the score fix and the existing regression check passes."],
+  maintainerCommentUrl: confirmation.url,
+};
+
+type GithubIssue = {
+  state: string; assignees: readonly unknown[]; labels: readonly { name: string }[];
+  comments: readonly typeof confirmation[];
+};
+const readyIssue = (): GithubIssue => ({
+  state: "OPEN", assignees: [], labels: [{ name: "ready-for-agent" }], comments: [confirmation],
+});
+
+async function withGithubIssue(
+  current: GithubIssue,
+  check: (calls: () => string[][], update: (issue: GithubIssue) => void) => Promise<void>,
+  failOperation = "",
+) {
+  const directory = mkdtempSync(join(tmpdir(), "sandcastle-resolution-"));
+  const logFile = join(directory, "calls.jsonl");
+  const stateFile = join(directory, "issue.json");
+  const previousPath = process.env.PATH;
+  writeFileSync(stateFile, JSON.stringify(current));
+  writeFileSync(logFile, "");
+  writeFileSync(join(directory, "gh"), `#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(logFile)}, JSON.stringify(args) + '\\n');
+if (args[1] === ${JSON.stringify(failOperation)}) process.exit(1);
+const stateFile = ${JSON.stringify(stateFile)};
+const current = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+if (args[1] === 'view') process.stdout.write(JSON.stringify(current));
+if (args[1] === 'close') current.state = 'CLOSED';
+if (args[1] === 'edit') current.labels = current.labels.filter(label => label.name !== args[args.indexOf('--remove-label') + 1]);
+fs.writeFileSync(stateFile, JSON.stringify(current));
+`, { mode: 0o700 });
+  try {
+    process.env.PATH = `${directory}:${previousPath}`;
+    await check(
+      () => readFileSync(logFile, "utf8").trim().split("\n").filter(Boolean).map(line => JSON.parse(line)),
+      updated => writeFileSync(stateFile, JSON.stringify(updated)),
+    );
+  } finally {
+    process.env.PATH = previousPath;
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
 
 function fixture(replies: Reply[], dirty = false) {
   const calls: SandboxRunOptions[] = [];
@@ -68,11 +120,84 @@ test("a newly assigned or blocked issue is skipped without changing GitHub", asy
   assert.equal(f.requests.length, 0);
 });
 
+test("a maintainer answer resolves a previously paused issue without repeating the question or implementing", async () => {
+  await withGithubIssue({ ...readyIssue(), comments: [] }, async (calls, update) => {
+    const request = {
+      decision: "needs-triage", reason: "The feature appears to be implemented.",
+      evidence: ["The starting base already contains the score fix."], question: "Is this issue implemented?",
+    };
+    const f = fixture([decision(request), decision(resolved), decision(resolved)]);
+    assert.deepEqual(await f.run(), { status: "needs-triage", commits: [] });
+    // The owner answers the handoff and restores ready-for-agent before retrying.
+    update(readyIssue());
+    assert.deepEqual(await f.run(), { status: "already-resolved", commits: [] });
+    assert.deepEqual(f.requests, [request]);
+    assert.deepEqual(f.calls.map(call => call.name), ["validator", "validator"]);
+    assert.deepEqual(calls().map(args => args[1]), ["view", "close", "edit"]);
+    const close = calls()[1]!;
+    assert.deepEqual(close.slice(0, 6), ["issue", "close", "42", "--reason", "completed", "--comment"]);
+    assert.match(close[6]!, /starting base/);
+    assert.match(close[6]!, /<!-- sandcastle:already-resolved -->/);
+    assert.ok(close[6]!.includes(confirmation.url));
+    assert.ok(close[6]!.includes(resolved.evidence[0]!));
+    assert.deepEqual(calls()[2], ["issue", "edit", "42", "--remove-label", "ready-for-agent"]);
+
+    // A stale/retried resolution after closure must only read the issue.
+    assert.deepEqual(await f.run(), { status: "skipped", commits: [] });
+    assert.deepEqual(calls().map(args => args[1]), ["view", "close", "edit", "view"]);
+    assert.deepEqual(f.requests, [request]);
+  });
+});
+
+for (const [name, current] of [
+  ["already closed by the owner", { ...readyIssue(), state: "CLOSED" }],
+  ["newly assigned", { ...readyIssue(), assignees: [{ login: "maintainer" }] }],
+  ["removed from the queue", { ...readyIssue(), labels: [] }],
+  ["reclassified", { ...readyIssue(), labels: [{ name: "ready-for-agent" }, { name: "needs-triage" }] }],
+] as const) {
+  test(`resolution leaves an issue ${name} unchanged`, async () => {
+    await withGithubIssue(current, async calls => {
+      const f = fixture([decision(resolved)]);
+      assert.deepEqual(await f.run(), { status: "skipped", commits: [] });
+      assert.deepEqual(calls().map(args => args[1]), ["view"]);
+      assert.equal(f.requests.length, 0);
+    });
+  });
+}
+
+for (const [name, comments] of [
+  ["missing confirmation", []],
+  ["non-maintainer comment", [{ ...confirmation, authorAssociation: "NONE" }]],
+  ["pipeline handoff", [{ ...confirmation, body: "<!-- sandcastle:human-required --> Already implemented?" }]],
+  ["pipeline closure", [{ ...confirmation, body: "<!-- sandcastle:already-resolved --> Already implemented." }]],
+] as const) {
+  test(`resolution rejects ${name} without writing to GitHub or repeating a question`, async () => {
+    await withGithubIssue({ ...readyIssue(), comments: [...comments] }, async calls => {
+      const f = fixture([decision(resolved)]);
+      await assert.rejects(f.run(), /maintainer confirmation/i);
+      assert.deepEqual(calls().map(args => args[1]), ["view"]);
+      assert.equal(f.calls.length, 1);
+      assert.equal(f.requests.length, 0);
+    });
+  });
+}
+
+test("a failed GitHub closure does not remove eligibility or post another question", async () => {
+  await withGithubIssue(readyIssue(), async calls => {
+    const f = fixture([decision(resolved)]);
+    await assert.rejects(f.run());
+    assert.deepEqual(calls().map(args => args[1]), ["view", "close"]);
+    assert.equal(f.requests.length, 0);
+  }, "close");
+});
+
 for (const [name, reply] of [
   ["missing decision", { stdout: "Looks fine" }],
   ["malformed JSON", { stdout: "<validation>{broken}</validation>" }],
   ["unsupported decision", decision({ decision: "close", reason: "Done", evidence: ["Already fixed"] })],
   ["approval without evidence", decision({ decision: "implement", reason: "Probably valid", evidence: [] })],
+  ["resolution without evidence", decision({ ...resolved, evidence: [] })],
+  ["resolution without maintainer confirmation", decision({ ...resolved, maintainerCommentUrl: undefined })],
   ["human request without a question", decision({ decision: "needs-info", reason: "Unclear", evidence: ["No reproduction"] })],
   ["conflicting decisions", { stdout: `${approved().stdout}${approved().stdout}` }],
   ["validator failure", new Error("Provider unavailable")],

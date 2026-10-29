@@ -99,6 +99,17 @@ an apparently fixed, duplicate, obsolete, or inappropriate request receives
 focused question as a GitHub issue comment. It leaves the issue open and excludes
 its branch from merging. No person is automatically assigned or mentioned.
 
+On retry, the validator uses prior maintainer replies rather than repeating an
+answered question. When an OWNER, MEMBER, or COLLABORATOR confirms completion and
+the validator independently verifies the agreed acceptance criteria on the starting
+base, it returns `already-resolved` with evidence and the confirmation comment URL.
+The runner rechecks GitHub eligibility and that comment, closes the issue as
+completed with the evidence, and removes `ready-for-agent`. This path needs no new
+commits and does not invoke implementation, review, or merging. The zero-commit
+guard still applies to issues approved for implementation. New contradictory
+evidence can require another human decision; unrelated remaining work stays in
+separate issues according to the maintainer's scope decision.
+
 The same handoff is available if doubts arise during implementation or review.
 Malformed validation output, validator file changes, agent failures, or missing
 completion signals also exclude the branch and request human input. Both coding
