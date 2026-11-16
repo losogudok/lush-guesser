@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import FooterLinks from "./FooterLinks";
 import Header from "./Header";
 import { request } from "../utils/request";
-import type { InfoModalType } from "./InfoModal";
 
 interface LeaderboardEntry {
   id: number;
@@ -15,17 +14,7 @@ interface LeaderboardEntry {
   sample?: boolean;
 }
 
-interface LeaderboardScreenProps {
-  onNavigate: (tab: "play" | "leaderboard") => void;
-  activeTab: "play" | "leaderboard";
-  onOpenInfo: (type: InfoModalType) => void;
-}
-
-export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
-  onNavigate,
-  activeTab,
-  onOpenInfo,
-}) => {
+export const LeaderboardScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -91,7 +80,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      <Header onNavigate={onNavigate} activeTab={activeTab} onOpenInfo={onOpenInfo} />
+      <Header />
 
       {/* Main Content */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-12 flex flex-col">
@@ -185,7 +174,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
         </div>
       </main>
 
-      <FooterLinks onOpenInfo={onOpenInfo} />
+      <FooterLinks />
     </div>
   );
 };

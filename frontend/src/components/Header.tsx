@@ -1,15 +1,15 @@
 import { HelpCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { InfoModalType } from './InfoModal';
+import { useNavigation } from '../ui/useNavigation';
+import { useUiStore } from '../ui/useUiStore';
 
-interface HeaderProps {
-  onNavigate: (tab: 'play' | 'leaderboard') => void;
-  activeTab: 'play' | 'leaderboard';
-  onOpenInfo: (type: InfoModalType) => void;
-}
-
-export const Header = ({ onNavigate, activeTab, onOpenInfo }: HeaderProps) => {
+export const Header = () => {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigation();
+  const activeTab = useUiStore((state) =>
+    state.screen === 'leaderboard' ? 'leaderboard' : 'play',
+  );
+  const openInfo = useUiStore((state) => state.openInfo);
 
   const toggleLanguage = () => {
     const nextLang = i18n.language === 'en' ? 'ru' : 'en';
@@ -20,7 +20,7 @@ export const Header = ({ onNavigate, activeTab, onOpenInfo }: HeaderProps) => {
     <header className="flex items-center justify-between px-8 py-6 border-b border-lush-gray-border">
       <div
         className="cursor-pointer rotate-y-180"
-        onClick={() => onNavigate('play')}
+        onClick={() => navigate('welcome')}
       >
         <picture>
           <source srcSet="/logo.webp" media="(prefers-color-scheme: dark)" />
@@ -30,7 +30,8 @@ export const Header = ({ onNavigate, activeTab, onOpenInfo }: HeaderProps) => {
 
       <nav className="flex items-center space-x-8 font-medium text-sm tracking-wide">
         <button
-          onClick={() => onNavigate('play')}
+          onClick={() => navigate('welcome')}
+          aria-current={activeTab === 'play' ? 'page' : undefined}
           className={`pb-1 transition-colors border-b-2 hover:text-lush-black cursor-pointer ${
             activeTab === 'play' ? 'border-lush-black text-lush-black' : 'border-transparent text-gray-500'
           }`}
@@ -38,7 +39,8 @@ export const Header = ({ onNavigate, activeTab, onOpenInfo }: HeaderProps) => {
           {t('nav.play')}
         </button>
         <button
-          onClick={() => onNavigate('leaderboard')}
+          onClick={() => navigate('leaderboard')}
+          aria-current={activeTab === 'leaderboard' ? 'page' : undefined}
           className={`pb-1 transition-colors border-b-2 hover:text-lush-black cursor-pointer ${
             activeTab === 'leaderboard' ? 'border-lush-black text-lush-black' : 'border-transparent text-gray-500'
           }`}
@@ -60,7 +62,7 @@ export const Header = ({ onNavigate, activeTab, onOpenInfo }: HeaderProps) => {
         <button
           title={t('help.title')}
           className="hover:opacity-70 transition-opacity cursor-pointer"
-          onClick={() => onOpenInfo('help')}
+          onClick={() => openInfo('help')}
         >
           <HelpCircle size={22} strokeWidth={1.5} />
         </button>

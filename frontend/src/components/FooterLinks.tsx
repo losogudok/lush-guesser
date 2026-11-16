@@ -1,13 +1,13 @@
 import { useTranslation } from 'react-i18next';
-import type { InfoModalType } from './InfoModal';
+import { useUiStore } from '../ui/useUiStore';
 
 interface FooterLinksProps {
-  onOpenInfo: (type: InfoModalType) => void;
   showBrand?: boolean;
 }
 
-export const FooterLinks = ({ onOpenInfo, showBrand = false }: FooterLinksProps) => {
+export const FooterLinks = ({ showBrand = false }: FooterLinksProps) => {
   const { t } = useTranslation();
+  const openInfo = useUiStore((state) => state.openInfo);
 
   return (
     <footer className="flex flex-col items-center justify-between border-t border-lush-gray-border bg-white px-8 py-6 text-xs text-gray-500 sm:flex-row">
@@ -17,13 +17,13 @@ export const FooterLinks = ({ onOpenInfo, showBrand = false }: FooterLinksProps)
         </div>
       )}
       <div className="mb-4 flex space-x-6 sm:mb-0">
-        <button type="button" className="hover:underline" onClick={() => onOpenInfo('terms')}>
+        <button type="button" className="hover:underline" onClick={() => openInfo('terms')}>
           {t('footer.terms')}
         </button>
-        <button type="button" className="hover:underline" onClick={() => onOpenInfo('privacy')}>
+        <button type="button" className="hover:underline" onClick={() => openInfo('privacy')}>
           {t('footer.privacy')}
         </button>
-        <button type="button" className="hover:underline" onClick={() => onOpenInfo('contact')}>
+        <button type="button" className="hover:underline" onClick={() => openInfo('contact')}>
           {t('footer.contact')}
         </button>
       </div>

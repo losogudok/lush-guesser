@@ -88,3 +88,53 @@ test('Player sees a clear submission failure when the connection fails', async (
   await expect(page.getByText('Final Score')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();
 });
+
+test('Player can quit and replay with a fresh Game Session', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Start Game' }).click();
+  await page.getByRole('button', { name: /Reveal Next/ }).click();
+  await expect(page.getByText('Current Worth: 75 Points')).toBeVisible();
+  await page.getByTestId('answer-option').first().click();
+  await page.getByTestId('next-round').click();
+  await expect(page.getByText('Round 2/10', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Quit Game' }).click();
+  await page.getByRole('button', { name: 'Start Game' }).click();
+  await expect(page.getByText('Round 1/10', { exact: true })).toBeVisible();
+  await expect(page.getByText('Total Score: 0', { exact: true })).toBeVisible();
+  await expect(page.getByText('Current Worth: 100 Points')).toBeVisible();
+
+  await completeGameSession(page);
+  await page.getByRole('button', { name: 'Play Again' }).click();
+  await expect(page.getByText('Round 1/10', { exact: true })).toBeVisible();
+  await expect(page.getByText('Total Score: 0', { exact: true })).toBeVisible();
+  await expect(page.getByText('Current Worth: 100 Points')).toBeVisible();
+  await expect(page.getByTestId('answer-option')).toHaveCount(4);
+});
+
+test('replay cancels the previous result screen redirect after score submission', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Start Game' }).click();
+  await completeGameSession(page);
+
+  await page.clock.install();
+  await page.route('**/api/leaderboard', (route) => route.fulfill({
+    status: 201,
+    json: { id: 1, name: 'Replay', score: 0, createdAt: '2026-11-16T00:00:00Z' },
+  }));
+  await page.getByPlaceholder('Enter name (max 20 chars)').fill('Replay');
+  await page.getByRole('button', { name: 'Submit' }).click();
+  await expect(page.getByText('✓ Score saved to leaderboard!')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Play Again' }).click();
+  await page.clock.fastForward(1500);
+  await expect(page.getByText('Round 1/10', { exact: true })).toBeVisible();
+  await expect(page.getByText('Global High Scores')).toBeHidden();
+
+  await completeGameSession(page);
+  await page.getByRole('contentinfo').getByRole('button', { name: 'Privacy' }).click();
+  await expect(page.getByRole('dialog', { name: 'Privacy' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Return to Home' }).click();
+  await expect(page.getByRole('button', { name: 'Start Game' })).toBeVisible();
+});

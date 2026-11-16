@@ -1,13 +1,8 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-
-export type InfoModalType = 'help' | 'terms' | 'privacy' | 'contact';
-
-interface InfoModalProps {
-  type: InfoModalType | null;
-  onClose: () => void;
-}
+import type { InfoModalType } from '../ui/uiStore';
+import { useUiStore } from '../ui/useUiStore';
 
 const modalBodyKeys: Record<InfoModalType, string[]> = {
   help: [
@@ -22,21 +17,23 @@ const modalBodyKeys: Record<InfoModalType, string[]> = {
   contact: ['info.contact.p1'],
 };
 
-export const InfoModal = ({ type, onClose }: InfoModalProps) => {
+export const InfoModal = () => {
   const { t } = useTranslation();
+  const type = useUiStore((state) => state.infoModal);
+  const closeInfo = useUiStore((state) => state.closeInfo);
 
   useEffect(() => {
     if (!type) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        closeInfo();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, type]);
+  }, [closeInfo, type]);
 
   if (!type) return null;
 
@@ -44,7 +41,7 @@ export const InfoModal = ({ type, onClose }: InfoModalProps) => {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
       role="presentation"
-      onMouseDown={onClose}
+      onMouseDown={closeInfo}
     >
       <section
         aria-modal="true"
@@ -63,7 +60,7 @@ export const InfoModal = ({ type, onClose }: InfoModalProps) => {
           <button
             type="button"
             className="shrink-0 text-lush-black transition-opacity hover:opacity-70"
-            onClick={onClose}
+            onClick={closeInfo}
             title={t('info.close')}
           >
             <X size={24} strokeWidth={1.5} />

@@ -7,45 +7,36 @@ import { useTranslation } from 'react-i18next';
 import { AnswerChoices } from './game/AnswerChoices';
 import { IngredientClueCarousel } from './game/IngredientClueCarousel';
 import { RoundResult } from './game/RoundResult';
-import {
-  advanceRound,
-  createGameSession,
-  isFinalRound,
-  revealNextIngredientClue,
-  submitGuess,
-} from '../game/gameSession';
+import { isFinalRound } from '../game/gameSession';
+import { useGameStore } from '../game/useGameStore';
+import { useNavigation } from '../ui/useNavigation';
 
-interface GameScreenProps {
-  onGameFinished: (finalScore: number, correctCount: number) => void;
-  onQuit: () => void;
-}
-
-export const GameScreen: React.FC<GameScreenProps> = ({
-  onGameFinished,
-  onQuit,
-}) => {
+export const GameScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigation();
   const currentLang: 'ru' | 'en' = i18n.language === 'ru' ? 'ru' : 'en';
 
-  const [session, setSession] = useState(() =>
-    createGameSession(productCatalog.products, Math.random),
-  );
+  const session = useGameStore((state) => state.session);
+  const revealNextClue = useGameStore((state) => state.revealNextClue);
+  const guess = useGameStore((state) => state.guess);
+  const nextRound = useGameStore((state) => state.nextRound);
   const [shake, setShake] = useState<boolean>(false);
+
+  if (!session) return null;
 
   const currentRound = session.rounds[session.currentRoundIndex] ?? null;
   const guessed = session.guessCorrect !== null;
   const activeWorth = session.pointsEarned ?? session.currentPointValue;
 
   const handleRevealNext = () => {
-    setSession(revealNextIngredientClue);
+    revealNextClue();
   };
 
   const handleGuess = (optionId: string) => {
-    const nextSession = submitGuess(session, optionId);
-    if (nextSession === session) return;
+    const guessCorrect = guess(optionId);
+    if (guessCorrect === null) return;
 
-    setSession(nextSession);
-    if (nextSession.guessCorrect) {
+    if (guessCorrect) {
       confetti({
         particleCount: 80,
         spread: 60,
@@ -59,13 +50,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   };
 
   const handleNextRound = () => {
-    const nextSession = advanceRound(session);
-    setSession(nextSession);
+    nextRound();
     setShake(false);
-
-    if (nextSession.status === 'finished') {
-      onGameFinished(nextSession.score, nextSession.correctAnswerCount);
-    }
   };
 
   if (!currentRound) return null;
@@ -80,7 +66,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       {/* Game Header */}
       <header className="flex items-center justify-between px-8 py-5 border-b border-lush-gray-border">
         <button 
-          onClick={onQuit}
+          onClick={() => navigate('welcome')}
           title={t('game.quit')} 
           className="text-lush-black hover:opacity-70 transition-opacity cursor-pointer flex items-center space-x-1"
         >

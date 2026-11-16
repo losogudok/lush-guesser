@@ -3,26 +3,15 @@ import { ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import FooterLinks from './FooterLinks';
 import Header from './Header';
-import type { InfoModalType } from './InfoModal';
+import { useNavigation } from '../ui/useNavigation';
 
-interface WelcomeScreenProps {
-  onStartGame: () => void;
-  onNavigate: (tab: 'play' | 'leaderboard') => void;
-  activeTab: 'play' | 'leaderboard';
-  onOpenInfo: (type: InfoModalType) => void;
-}
-
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
-  onStartGame,
-  onNavigate,
-  activeTab,
-  onOpenInfo,
-}) => {
+export const WelcomeScreen: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigation();
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      <Header onNavigate={onNavigate} activeTab={activeTab} onOpenInfo={onOpenInfo} />
+      <Header />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center">
@@ -34,7 +23,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </p>
         
         <button
-          onClick={onStartGame}
+          onClick={() => navigate('game')}
           className="group flex items-center justify-center space-x-3 bg-lush-black text-white hover:bg-neutral-900 px-8 py-4 rounded-full text-sm font-semibold tracking-widest uppercase transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-md cursor-pointer"
         >
           <span>{t('app.start')}</span>
@@ -42,7 +31,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </button>
       </main>
 
-      <FooterLinks onOpenInfo={onOpenInfo} />
+      <FooterLinks />
     </div>
   );
 };

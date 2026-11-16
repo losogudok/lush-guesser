@@ -1,98 +1,34 @@
-import { useState } from 'react';
-
 import WelcomeScreen from './components/WelcomeScreen';
 import GameScreen from './components/GameScreen';
 import GameOverScreen from './components/GameOverScreen';
 import LeaderboardScreen from './components/LeaderboardScreen';
 import InfoModal from './components/InfoModal';
-import type { InfoModalType } from './components/InfoModal';
 import { GAME_SESSION_ROUND_COUNT } from './game/gameSession';
-
-type ScreenState = 'welcome' | 'game' | 'gameover' | 'leaderboard';
+import { useGameStore } from './game/useGameStore';
+import { useUiStore } from './ui/useUiStore';
 
 function App() {
-  const [screen, setScreen] = useState<ScreenState>('welcome');
-  const [finalScore, setFinalScore] = useState<number>(0);
-  const [correctAnswers, setCorrectAnswers] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState<'play' | 'leaderboard'>('play');
-  const [infoModal, setInfoModal] = useState<InfoModalType | null>(null);
-
-  const handleStartGame = () => {
-    setScreen('game');
-  };
-
-  const handleGameFinished = (score: number, correctCount: number) => {
-    setFinalScore(score);
-    setCorrectAnswers(correctCount);
-    setScreen('gameover');
-  };
-
-  const handleQuit = () => {
-    setScreen('welcome');
-    setActiveTab('play');
-  };
-
-  const handlePlayAgain = () => {
-    setScreen('game');
-  };
-
-  const handleReturnHome = () => {
-    setScreen('welcome');
-    setActiveTab('play');
-  };
-
-  const handleNavigateToLeaderboard = () => {
-    setScreen('leaderboard');
-    setActiveTab('leaderboard');
-  };
-
-  const handleHeaderNavigate = (tab: 'play' | 'leaderboard') => {
-    setActiveTab(tab);
-    if (tab === 'play') {
-      setScreen('welcome');
-    } else {
-      setScreen('leaderboard');
-    }
-  };
+  const screen = useUiStore((state) => state.screen);
+  const finishedSession = useGameStore((state) =>
+    state.session?.status === 'finished' ? state.session : null,
+  );
 
   return (
     <div className="min-h-screen bg-white">
-      {screen === 'welcome' && (
-        <WelcomeScreen
-          onStartGame={handleStartGame}
-          onNavigate={handleHeaderNavigate}
-          activeTab={activeTab}
-          onOpenInfo={setInfoModal}
-        />
-      )}
+      {screen === 'welcome' && <WelcomeScreen />}
 
-      {screen === 'game' && (
-        <GameScreen
-          onGameFinished={handleGameFinished}
-          onQuit={handleQuit}
-        />
-      )}
+      {screen === 'game' && !finishedSession && <GameScreen />}
 
-      {screen === 'gameover' && (
+      {screen === 'game' && finishedSession && (
         <GameOverScreen
-          score={finalScore}
-          correctAnswers={correctAnswers}
+          score={finishedSession.score}
+          correctAnswers={finishedSession.correctAnswerCount}
           totalRounds={GAME_SESSION_ROUND_COUNT}
-          onPlayAgain={handlePlayAgain}
-          onReturnHome={handleReturnHome}
-          onNavigateToLeaderboard={handleNavigateToLeaderboard}
-          onOpenInfo={setInfoModal}
         />
       )}
 
-      {screen === 'leaderboard' && (
-        <LeaderboardScreen
-          onNavigate={handleHeaderNavigate}
-          activeTab={activeTab}
-          onOpenInfo={setInfoModal}
-        />
-      )}
-      <InfoModal type={infoModal} onClose={() => setInfoModal(null)} />
+      {screen === 'leaderboard' && <LeaderboardScreen />}
+      <InfoModal />
     </div>
   );
 }

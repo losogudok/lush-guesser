@@ -1,33 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Star, RefreshCw, Home, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import FooterLinks from './FooterLinks';
-import type { InfoModalType } from './InfoModal';
+import { useNavigation } from '../ui/useNavigation';
 
 interface GameOverScreenProps {
   score: number;
   correctAnswers: number;
   totalRounds: number;
-  onPlayAgain: () => void;
-  onReturnHome: () => void;
-  onNavigateToLeaderboard: () => void;
-  onOpenInfo: (type: InfoModalType) => void;
 }
 
 export const GameOverScreen: React.FC<GameOverScreenProps> = ({
   score,
   correctAnswers,
   totalRounds,
-  onPlayAgain,
-  onReturnHome,
-  onNavigateToLeaderboard,
-  onOpenInfo,
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigation();
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!submitted) return;
+
+    const timeoutId = setTimeout(() => navigate('leaderboard'), 1000);
+    return () => clearTimeout(timeoutId);
+  }, [submitted, navigate]);
 
   // Determine Title and Description based on score
   let titleKey = "tier.novice";
@@ -60,9 +60,6 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
       }
 
       setSubmitted(true);
-      setTimeout(() => {
-        onNavigateToLeaderboard();
-      }, 1000);
     } catch (err: unknown) {
       console.error(err);
       setError(t('gameover.submit_failed'));
@@ -77,7 +74,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
       <header className="flex items-center justify-between px-8 py-6 border-b border-lush-gray-border">
         <div 
           className="text-2xl font-cabinet tracking-tight cursor-pointer text-lush-black"
-          onClick={onReturnHome}
+          onClick={() => navigate('welcome')}
         >
           {t('app.title')}
         </div>
@@ -161,7 +158,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
         {/* Call to Actions */}
         <div className="flex flex-col space-y-4 w-full max-w-xs">
           <button
-            onClick={onPlayAgain}
+            onClick={() => navigate('game')}
             className="flex items-center justify-center space-x-2 bg-lush-green hover:bg-[#00c853] text-lush-black border-2 border-lush-black px-6 py-3 font-semibold text-sm tracking-wider uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             <RefreshCw size={16} />
@@ -169,7 +166,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
           </button>
           
           <button
-            onClick={onReturnHome}
+            onClick={() => navigate('welcome')}
             className="flex items-center justify-center space-x-2 bg-white hover:bg-neutral-50 text-lush-black border-2 border-lush-black px-6 py-3 font-semibold text-sm tracking-wider uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             <Home size={16} />
@@ -178,7 +175,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
         </div>
       </main>
 
-      <FooterLinks onOpenInfo={onOpenInfo} showBrand />
+      <FooterLinks showBrand />
     </div>
   );
 };
