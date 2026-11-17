@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test:http": "tsx --test test/http.test.ts",
     "test:catalog": "tsx --test test/product-catalog.test.ts",
     "test:game-session": "tsx --test test/game-session.test.ts test/game-store.test.ts",
     "validate:catalog": "tsx scripts/validate-catalog.ts",
@@ -16,6 +17,7 @@
   "dependencies": {
     "canvas-confetti": "^1.9.4",
     "i18next": "^26.3.0",
+    "ky": "^2.2.0",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

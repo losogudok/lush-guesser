@@ -3,6 +3,7 @@ import { Star, RefreshCw, Home, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import FooterLinks from './FooterLinks';
 import { useNavigation } from '../ui/useNavigation';
+import { submitScore } from '../api/leaderboard';
 
 interface GameOverScreenProps {
   score: number;
@@ -48,16 +49,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
       setSubmitting(true);
       setError(null);
       
-      const response = await fetch('/api/leaderboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, score }),
-      });
-
-      if (!response.ok) {
-        setError(t('gameover.submit_failed'));
-        return;
-      }
+      await submitScore({ name, score });
 
       setSubmitted(true);
     } catch (err: unknown) {

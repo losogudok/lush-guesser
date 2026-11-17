@@ -4,15 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import FooterLinks from "./FooterLinks";
 import Header from "./Header";
-import { request } from "../utils/request";
-
-interface LeaderboardEntry {
-  id: number;
-  name: string;
-  score: number;
-  createdAt: string;
-  sample?: boolean;
-}
+import { getLeaderboard, type LeaderboardEntry } from "../api/leaderboard";
 
 export const LeaderboardScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -22,25 +14,19 @@ export const LeaderboardScreen: React.FC = () => {
 
   useEffect(() => {
     let ignore = false;
-    let abortController: AbortController;
+    const abortController = new AbortController();
 
     async function fetchLeaderboard() {
-      abortController = new AbortController();
-
       try {
         setLoading(true);
         setError(null);
-        const leaderboardEntries = await request<LeaderboardEntry[]>(
-          "/api/leaderboard?limit=20",
-          { method: "GET", signal: abortController.signal },
-        );
+        const leaderboardEntries = await getLeaderboard(abortController.signal);
         if (!ignore) {
           setEntries(leaderboardEntries);
         }
       } catch (err: unknown) {
-        console.error(err);
-
         if (!ignore) {
+          console.error(err);
           setError(
             err instanceof Error
               ? err.message
